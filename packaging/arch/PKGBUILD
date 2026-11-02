@@ -1,6 +1,6 @@
 # Generate the adjacent source archive with scripts/package.sh arch-source.
 pkgname=open-meteo
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
 pkgdesc='Native Linux weather forecasts with system tray access'
 url='https://github.com/fossgap/open-meteo'
