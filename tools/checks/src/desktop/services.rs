@@ -25,6 +25,7 @@ pub fn run() -> Result<()> {
       <property name="IsStatusNotifierHostRegistered" type="b" access="read"/>
       <property name="RegisteredStatusNotifierItems" type="as" access="read"/>
       <signal name="StatusNotifierItemRegistered"><arg type="s"/></signal>
+      <signal name="StatusNotifierItemUnregistered"><arg type="s"/></signal>
     </interface>
     <interface name="org.freedesktop.portal.Settings">
       <method name="Read"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="v" direction="out"/></method>
@@ -35,6 +36,42 @@ pub fn run() -> Result<()> {
       <signal name="SettingChanged"><arg type="s"/><arg type="s"/><arg type="v"/></signal>
     </interface></node>"#;
     let info = gio::DBusNodeInfo::for_xml(xml)?;
+    let lost_items = items.clone();
+    let signal_bus = bus.clone();
+    let _owners = bus.subscribe_to_signal(
+        Some("org.freedesktop.DBus"),
+        Some("org.freedesktop.DBus"),
+        Some("NameOwnerChanged"),
+        Some("/org/freedesktop/DBus"),
+        None,
+        gio::DBusSignalFlags::NONE,
+        move |signal| {
+            let (name, _, owner): (String, String, String) = value(signal.parameters).unwrap();
+            if !owner.is_empty() {
+                return;
+            }
+            let removed = lost_items
+                .borrow()
+                .iter()
+                .filter(|item| item.split('/').next() == Some(name.as_str()))
+                .cloned()
+                .collect::<Vec<_>>();
+            lost_items
+                .borrow_mut()
+                .retain(|item| !removed.contains(item));
+            for item in removed {
+                signal_bus
+                    .emit_signal(
+                        None,
+                        "/StatusNotifierWatcher",
+                        WATCHER,
+                        "StatusNotifierItemUnregistered",
+                        Some(&(item,).to_variant()),
+                    )
+                    .unwrap();
+            }
+        },
+    );
     let registered = items.clone();
     let properties = items.clone();
     let _registration = bus

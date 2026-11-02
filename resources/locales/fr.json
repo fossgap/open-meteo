@@ -1,4 +1,5 @@
 {
+  "Weather": "Météo",
   "Search locations (Ctrl+L)": "Rechercher un lieu (Ctrl+L)",
   "Refresh weather (Ctrl+R)": "Actualiser la météo (Ctrl+R)",
   "Celsius and kilometres per hour": "Celsius et kilomètres par heure",
@@ -17,7 +18,6 @@
   "Search for a city or postal code. Your location is never detected automatically.": "Recherchez une ville ou un code postal. Votre position n’est jamais détectée automatiquement.",
   "No locations found. Try a nearby city or a different spelling.": "Aucun lieu trouvé. Essayez une ville proche ou une autre orthographe.",
   "System tray unavailable on this desktop": "Panneau météo indisponible sur ce bureau",
-  "Closing the window keeps weather in your system tray": "La météo reste dans le panneau à la fermeture",
   "Closing the window quits Open Meteo": "Fermer la fenêtre quitte Open Meteo",
   "Weather is displayed beside the GNOME clock": "La météo s’affiche à côté de l’horloge GNOME",
   "Showing saved weather.": "Affichage de la météo enregistrée.",

@@ -132,10 +132,27 @@ pub fn run() -> Result<()> {
 }
 
 fn tray_and_bridge(h: &Harness, a11y: &Accessibility, win: &str) -> Result<()> {
+    let activate_fallback = || -> Result<()> {
+        let item = h.registered()?[0].clone();
+        let (service, rest) = item.split_once('/').context("Fallback tray address")?;
+        call(
+            &h.bus,
+            service,
+            &format!("/{rest}"),
+            ITEM,
+            "Activate",
+            Some(&(0i32, 0i32).to_variant()),
+        )?;
+        until("fallback tray opens forecast", || mapped(win, "IsViewable"))
+    };
     until("one combined weather tray item", || {
         Ok(h.registered()?.len() == 1)
     })?;
     let item = h.registered()?[0].clone();
+    ensure!(
+        !a11y.present("Closing the window keeps weather in your system tray"),
+        "Remove the close-to-panel caption"
+    );
     let (service, rest) = item.split_once('/').context("Tray address")?;
     let path = format!("/{rest}");
     let prop = |name| property(&h.bus, service, &path, ITEM, name);
@@ -220,22 +237,20 @@ fn tray_and_bridge(h: &Harness, a11y: &Accessibility, win: &str) -> Result<()> {
         Some(&(0i32, 0i32).to_variant()),
     )?;
     until("restore from tray", || mapped(win, "IsViewable"))?;
-    a11y.click("Close")?;
-    until("hidden before tray host disappears", || {
-        mapped(win, "IsUnMapped")
-    })?;
-    h.setting("RemoveTray", None)?;
-    until("tray loss restores hidden window", || {
-        mapped(win, "IsViewable")
-    })?;
     let snapshot: serde_json::Value =
         serde_json::from_str(&first::<String>(&h.bridge("Attach")?)?)?;
-    until("clock hides combined tray", || {
-        Ok(value::<String>(&prop("Status")?)? == "Passive")
+    until("clock unregisters the regular tray", || {
+        Ok(h.registered()?.is_empty() && !has_name(&h.bus, service)?)
     })?;
     ensure!(
         snapshot["temperature"] == "21°C" && snapshot["location"] == "Paris",
         "Clock snapshot: {snapshot}"
+    );
+    ensure!(
+        snapshot["hourly"]
+            .as_array()
+            .is_some_and(|hours| hours.len() == 5),
+        "Calendar panel needs the next five hours"
     );
     a11y.click("Close")?;
     until("close to GNOME clock", || mapped(win, "IsUnMapped"))?;
@@ -245,11 +260,9 @@ fn tray_and_bridge(h: &Harness, a11y: &Accessibility, win: &str) -> Result<()> {
     until("hidden before clock detaches", || mapped(win, "IsUnMapped"))?;
     h.bridge("Detach")?;
     until("clock detach restores tray", || {
-        Ok(value::<String>(&prop("Status")?)? == "Active")
+        Ok(h.registered()?.len() == 1)
     })?;
-    until("extension disable restores hidden window", || {
-        mapped(win, "IsViewable")
-    })?;
+    activate_fallback()?;
     let peer = gio::DBusConnection::for_address_sync(
         &std::env::var("DBUS_SESSION_BUS_ADDRESS")?,
         gio::DBusConnectionFlags::AUTHENTICATION_CLIENT
@@ -265,12 +278,24 @@ fn tray_and_bridge(h: &Harness, a11y: &Accessibility, win: &str) -> Result<()> {
         "Attach",
         None,
     )?;
+    until("second clock attach removes fallback tray", || {
+        Ok(h.registered()?.is_empty())
+    })?;
     a11y.click("Close")?;
     until("close with independent clock peer", || {
         mapped(win, "IsUnMapped")
     })?;
     peer.close_sync(gio::Cancellable::NONE)?;
-    until("clock crash restores hidden window", || {
+    until("clock crash restores one tray", || {
+        Ok(h.registered()?.len() == 1)
+    })?;
+    activate_fallback()?;
+    a11y.click("Close")?;
+    until("hidden before tray host disappears", || {
+        mapped(win, "IsUnMapped")
+    })?;
+    h.setting("RemoveTray", None)?;
+    until("tray loss restores hidden window", || {
         mapped(win, "IsViewable")
     })?;
     Ok(())

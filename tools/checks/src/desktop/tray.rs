@@ -185,6 +185,16 @@ pub fn panel() -> Result<()> {
         Some(&(activation,).to_variant()),
     )?;
     let a11y = Accessibility::new()?;
+    // Enable the bridge before XFCE creates its external GtkSocket/AtkPlug.
+    // Otherwise the plugin can embed before its accessibility tree is ready.
+    call(
+        &h.bus,
+        "org.a11y.Bus",
+        "/org/a11y/bus",
+        "org.freedesktop.DBus.Properties",
+        "Set",
+        Some(&("org.a11y.Status", "ScreenReaderEnabled", true.to_variant()).to_variant()),
+    )?;
     let _panel = Process(
         command("xfce4-panel", &h.env)
             .arg("--disable-wm-check")
@@ -225,6 +235,9 @@ pub fn panel() -> Result<()> {
     }) {
         capture("tray-failure.png")?;
         for node in a11y.nodes() {
+            if node.application == "xfce4-panel" || node.application == "wrapper-2.0" {
+                eprintln!("CHILDREN {}", node.child_diagnostics());
+            }
             eprintln!(
                 "PANEL NODE {:?} {:?} {:?}",
                 node.application,

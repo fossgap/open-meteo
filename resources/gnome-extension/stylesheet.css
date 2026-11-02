@@ -8,4 +8,12 @@
 }
 .open-meteo-clock-icon { icon-size: 16px; }
 .open-meteo-clock-saved { opacity: 0.65; }
-.open-meteo-summary { max-width: 32em; }
+.open-meteo-forecast .weather-forecast-time { padding: 2px 0; }
+.open-meteo-forecast .weather-forecast-icon {
+    icon-size: 24px;
+    margin-bottom: 0;
+}
+.open-meteo-forecast-status {
+    font-size: 0.9em;
+    padding-top: 6px;
+}

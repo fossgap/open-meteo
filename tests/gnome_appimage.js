@@ -47,9 +47,11 @@ export async function run() {
     // Deliver real pointer events: Wayland activation requires user input,
     // and GNOME's AppIndicator uses double-click to open the application.
     const pointer = global.stage.context.get_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
-    await Scripting.sleep(100);
-    pointer.notify_absolute_motion(GLib.get_monotonic_time(), ix + iw / 2, iy + ih / 2);
-    await Scripting.sleep(100);
+    await until(() => {
+        pointer.notify_absolute_motion(GLib.get_monotonic_time(), ix + iw / 2, iy + ih / 2);
+        const [x, y] = global.get_pointer();
+        return Math.abs(x - ix - iw / 2) <= 1 && Math.abs(y - iy - ih / 2) <= 1;
+    }, 'virtual pointer reaches the tray button');
     for (let click = 0; click < 2; click++) {
         pointer.notify_button(GLib.get_monotonic_time(), Clutter.BUTTON_PRIMARY, Clutter.ButtonState.PRESSED);
         await Scripting.sleep(30);

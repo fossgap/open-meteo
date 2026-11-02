@@ -2,6 +2,10 @@ name: GNOME Clock CI
 
 on:
   workflow_call:
+    inputs:
+      packaged:
+        type: boolean
+        default: false
   workflow_dispatch:
 
 permissions:
@@ -16,11 +20,39 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Download the verified application packages
+        if: inputs.packaged
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: linux-x86_64-release
+          path: dist/release
+      - name: Download Rust checksum verification tools
+        if: inputs.packaged
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: linux-verification-tools
+          path: target/check-tools
+      - name: Verify the packaged application
+        if: inputs.packaged
+        env:
+          OPEN_METEO_CHECK_TOOLS_DIR: ${{ github.workspace }}/target/check-tools
+        run: |
+          chmod +x target/check-tools/*
+          sh scripts/verify-packages.sh --checksums-only dist/release
+          chmod +x dist/release/*.AppImage
       - name: Build isolated GNOME 50 test environment
         run: docker build -f tests/gnome.Dockerfile -t open-meteo-gnome .
       - name: Test weather in the system clock and as one labeled tray item
+        env:
+          WITH_PACKAGE: ${{ inputs.packaged }}
         run: |
-          docker create --name meteo-gnome --tmpfs /tmp:rw,exec --shm-size=1g open-meteo-gnome
+          docker_args=()
+          if [ "$WITH_PACKAGE" = true ]; then
+            set -- dist/release/*.AppImage
+            test "$#" -eq 1
+            docker_args+=(--volume "$PWD/dist/release:/artifacts:ro" --env "OPEN_METEO_TEST_BINARY=/artifacts/${1##*/}")
+          fi
+          docker create --name meteo-gnome --tmpfs /tmp:rw,exec --shm-size=1g "${docker_args[@]}" open-meteo-gnome
           docker start -a meteo-gnome
           test "$(docker inspect --format '{{.State.ExitCode}}' meteo-gnome)" -eq 0
       - name: Collect GNOME evidence
@@ -28,14 +60,13 @@ jobs:
         run: |
           mkdir -p target/gnome-evidence
           docker logs meteo-gnome > target/gnome-evidence/shell.log 2>&1 || true
-          docker cp meteo-gnome:/workspace/target/ci/gnome-clock.png target/gnome-evidence/ || true
-          docker cp meteo-gnome:/workspace/target/ci/gnome-indicator.png target/gnome-evidence/ || true
+          docker cp meteo-gnome:/workspace/target/ci/. target/gnome-evidence/ || true
           docker rm -f meteo-gnome || true
       - name: Retain clock screenshot and logs
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: gnome-clock-evidence
+          name: ${{ inputs.packaged && 'gnome-package-evidence' || 'gnome-clock-evidence' }}
           path: target/gnome-evidence/
           if-no-files-found: warn
           retention-days: 14

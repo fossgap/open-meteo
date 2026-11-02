@@ -1,4 +1,5 @@
 {
+  "Weather": "Weather",
   "Search locations (Ctrl+L)": "Search locations (Ctrl+L)",
   "Refresh weather (Ctrl+R)": "Refresh weather (Ctrl+R)",
   "Celsius and kilometres per hour": "Celsius and kilometres per hour",
@@ -17,7 +18,6 @@
   "Search for a city or postal code. Your location is never detected automatically.": "Search for a city or postal code. Your location is never detected automatically.",
   "No locations found. Try a nearby city or a different spelling.": "No locations found. Try a nearby city or a different spelling.",
   "System tray unavailable on this desktop": "System tray unavailable on this desktop",
-  "Closing the window keeps weather in your system tray": "Closing the window keeps weather in your system tray",
   "Closing the window quits Open Meteo": "Closing the window quits Open Meteo",
   "Weather is displayed beside the GNOME clock": "Weather is displayed beside the GNOME clock",
   "Showing saved weather.": "Showing saved weather.",

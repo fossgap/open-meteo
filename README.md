@@ -41,8 +41,9 @@ A [FOSSGap](https://github.com/fossgap) project and independent desktop client; 
   on one line inside a single clickable tray item, plus hourly and weekly
   forecasts, refresh, open, and quit actions. The complete icon shares one hover
   area and menu; clicking anywhere on it opens the forecast.
-- **GNOME clock:** the bundled Open Meteo Clock extension places the weather icon
-  and temperature beside the system clock, with forecast actions in its menu.
+- **GNOME clock:** the bundled Open Meteo Clock extension puts the weather icon
+  and temperature inside the system clock button, with five forecast hours in
+  the calendar panel.
 - **Offline support:** the last successful forecast for each location is saved.
   Saved data is labelled with its timestamp; expired hours and days are omitted.
 - **Desktop integration:** follows the desktop's light/dark preference, adapts to
@@ -149,15 +150,19 @@ The app never restarts your session or changes the global extension switch.
 Setup reports disabled extensions or unsupported Shell versions separately.
 
 Launch Open Meteo and select a location. The extension shows the weather directly
-beside the existing clock, as in the reference layout. Click the clock to find
-**Open forecast** and **Refresh** below the calendar. Closing the app window keeps
+inside the existing clock button. Click it to see a weather card below the
+calendar, with the location and five upcoming hours of icons and temperatures.
+Click the weather card to open the full forecast. Opening the calendar requests
+an update at most once every 15 minutes. Closing the app window keeps
 it running when the panel preference is enabled; **Quit** removes the indicator.
 The extension does not launch the app automatically.
 
 The extension targets GNOME Shell 45–50; automated Shell integration tests run on
-GNOME 50. It shares the app's forecast over the session bus and makes no additional
-weather requests. A `~` before the temperature marks saved weather. While the clock
-extension is connected, the ordinary tray item becomes passive to avoid duplication.
+GNOME 50. It shares the app's forecast over the session bus; weather requests run
+in the app. A `~` before the temperature marks saved weather. While the clock
+extension is connected, the ordinary tray item is unregistered. It returns if
+the extension is disabled or disconnects. GNOME's original weather card is restored
+when Open Meteo exits or the extension is disabled.
 Native packages also install the extension under `/usr/share/gnome-shell/extensions`.
 The user installer works with every package format and source builds.
 

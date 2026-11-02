@@ -61,6 +61,8 @@ struct Ui {
     store: Store,
     client: Result<WeatherClient, String>,
     sender: mpsc::Sender<Event>,
+    tray_sender: mpsc::Sender<TrayEvent>,
+    tray_pending: Cell<bool>,
     online: Arc<AtomicBool>,
     demo: bool,
     clock_online: Cell<bool>,
@@ -231,6 +233,8 @@ pub fn build(app: &adw::Application, demo: bool) {
         store,
         client: WeatherClient::new(),
         sender,
+        tray_sender,
+        tray_pending: Cell::new(false),
         online,
         demo,
         clock_online: Cell::new(false),
@@ -242,14 +246,15 @@ pub fn build(app: &adw::Application, demo: bool) {
         let available_ui = Rc::downgrade(&ui);
         match crate::desktop::Desktop::new(
             connection,
-            move |command| {
+            move |event| {
                 if let Some(ui) = command_ui.upgrade() {
-                    ui.receive_tray(TrayEvent::Command(command));
+                    ui.receive_tray(event);
                 }
             },
             move |online| {
                 if let Some(ui) = available_ui.upgrade() {
                     ui.clock_online.set(online);
+                    ui.sync_tray();
                     if !online && !ui.online.load(Ordering::Relaxed) && !ui.window.is_visible() {
                         ui.window.present();
                     }
@@ -367,7 +372,8 @@ pub fn build(app: &adw::Application, demo: bool) {
         let state = this.state.borrow();
         if state.prefs.keep_in_tray
             && (this.clock_online.get()
-                || (state.tray.is_some() && this.online.load(Ordering::Relaxed)))
+                || ((state.tray.is_some() || this.tray_pending.get())
+                    && this.online.load(Ordering::Relaxed)))
         {
             window.set_visible(false);
             glib::Propagation::Stop
@@ -422,7 +428,7 @@ pub fn build(app: &adw::Application, demo: bool) {
             handle.shutdown().wait();
         }
     });
-    tray::start(tray_sender, ui.online.clone(), demo);
+    ui.sync_tray();
     ui.render();
     ui.show_recent();
     ui.window.present();
@@ -646,16 +652,27 @@ impl Ui {
 
     fn receive_tray(self: &Rc<Self>, event: TrayEvent) {
         match event {
-            TrayEvent::Ready(result) => match result {
-                Ok(handle) => {
-                    self.state.borrow_mut().tray = Some(handle);
-                    self.update_tray();
+            TrayEvent::Ready(result) => {
+                self.tray_pending.set(false);
+                match result {
+                    Ok(handle) => {
+                        self.state.borrow_mut().tray = Some(handle);
+                        self.sync_tray();
+                        self.update_tray();
+                    }
+                    Err(error) => {
+                        eprintln!("System tray: {error}");
+                        self.online.store(false, Ordering::Relaxed);
+                        if !self.clock_online.get() && !self.window.is_visible() {
+                            self.window.present();
+                        }
+                    }
                 }
-                Err(error) => {
-                    eprintln!("System tray: {error}");
-                    self.online.store(false, Ordering::Relaxed);
-                }
-            },
+            }
+            TrayEvent::Stopped => {
+                self.tray_pending.set(false);
+                self.sync_tray();
+            }
             TrayEvent::Availability(online) => {
                 if !online && !self.clock_online.get() && !self.window.is_visible() {
                     self.window.present();
@@ -684,6 +701,22 @@ impl Ui {
         self.update_tray_status();
     }
 
+    fn sync_tray(&self) {
+        if self.clock_online.get() {
+            // Unregister instead of relying on a host honoring Passive status.
+            // Wait off the GTK thread before allowing a fallback tray to start.
+            let handle = self.state.borrow_mut().tray.take();
+            if let Some(handle) = handle {
+                self.tray_pending.set(true);
+                self.online.store(false, Ordering::Relaxed);
+                tray::stop(handle, self.tray_sender.clone());
+            }
+        } else if !self.tray_pending.get() && self.state.borrow().tray.is_none() {
+            self.tray_pending.set(true);
+            tray::start(self.tray_sender.clone(), self.online.clone(), self.demo);
+        }
+    }
+
     fn update_tray(&self) {
         let state = self.state.borrow();
         if let Some(desktop) = self.desktop.borrow().as_ref() {
@@ -700,7 +733,6 @@ impl Ui {
                 tray.saved = state.saved.clone();
                 tray.units = state.prefs.units;
                 tray.stale = state.stale;
-                tray.clock_active = self.clock_online.get();
                 tray.icons = icons;
             });
         }
@@ -709,14 +741,15 @@ impl Ui {
     fn update_tray_status(&self) {
         let state = self.state.borrow();
         let available = self.clock_online.get()
-            || (state.tray.is_some() && self.online.load(Ordering::Relaxed));
+            || ((state.tray.is_some() || self.tray_pending.get())
+                && self.online.load(Ordering::Relaxed));
         self.tray_action.set_enabled(available);
+        self.tray_status
+            .set_visible(!available || !state.prefs.keep_in_tray);
         self.tray_status.set_text(&tr(if !available {
             "System tray unavailable on this desktop"
-        } else if self.clock_online.get() && state.prefs.keep_in_tray {
-            "Weather is displayed beside the GNOME clock"
         } else if state.prefs.keep_in_tray {
-            "Closing the window keeps weather in your system tray"
+            ""
         } else {
             "Closing the window quits Open Meteo"
         }));

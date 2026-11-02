@@ -27,9 +27,11 @@ runs. The checks cover:
   first-install scheduling, repeated setup, updates, and failure states. The same
   checks run for source builds, AppImages, and installed native packages.
 - A separate [GNOME Clock CI](../.github/workflows/gnome-ci.yml) runs GNOME 50 in
-  an isolated Fedora 44 container: clock placement, forecast actions, unit and
+  an isolated Fedora 44 container: shared clock click target, a five-hour forecast
+  in the calendar column, light/dark/RTL layouts, empty and saved states, unit and
   saved-weather updates, app restarts, and immediate enablement over GNOME's
-  public D-Bus interface. The host desktop and installed extensions are untouched.
+  public D-Bus interface. Disabling restores GNOME's original weather section.
+  The host desktop and installed extensions are untouched.
 - The same GNOME environment verifies AppIndicator's native weather icon and
   temperature label inside one button, readable sizes, shared hit targets,
   updates and activation.
@@ -38,7 +40,11 @@ When a built AppImage is available inside the GNOME test container, set
 `OPEN_METEO_TEST_BINARY` to its absolute path before running
 `sh scripts/check-gnome.sh`. This additionally checks the real packaged tray,
 Wayland activation of a minimized forecast window, and removal on quit. Its
-screenshot is saved as `target/ci/gnome-appimage.png`.
+screenshot is saved as `target/ci/gnome-appimage.png`. It also runs the packaged app
+with the clock and AppIndicator extensions together, checking hourly forecasts,
+calendar-card activation, tray removal/restoration, and cleanup. That capture is
+`target/ci/gnome-clock-app.png`. Release CI requires this packaged GNOME check
+before publication and retains its results in `gnome-package-evidence`.
 
 The native tests use synthetic weather, temporary settings, mock desktop services,
 and a refused local proxy. They do not require the weather API. Live API testing

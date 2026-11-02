@@ -115,9 +115,15 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  verify-gnome-app:
+    needs: build
+    uses: ./.github/workflows/gnome-ci.yml
+    with:
+      packaged: true
+
   publish:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [build, verify-packages, verify-gnome]
+    needs: [build, verify-packages, verify-gnome, verify-gnome-app]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

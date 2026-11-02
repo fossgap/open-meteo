@@ -1,7 +1,7 @@
 FROM registry.fedoraproject.org/fedora:44
 RUN dnf -y --setopt=install_weak_deps=False install \
     gnome-shell zip dbus-daemon mesa-dri-drivers mesa-libEGL \
-    xorg-x11-server-Xwayland util-linux fuse3 gnome-shell-extension-appindicator \
+    xorg-x11-server-Xwayland util-linux fuse3 gnome-shell-extension-appindicator google-noto-sans-arabic-fonts \
     && dnf clean all \
     && useradd -m shelltest
 WORKDIR /workspace

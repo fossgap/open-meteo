@@ -1,4 +1,5 @@
 {
+  "Weather": "मौसम",
   "Search locations (Ctrl+L)": "स्थान खोजें (Ctrl+L)",
   "Refresh weather (Ctrl+R)": "मौसम ताज़ा करें (Ctrl+R)",
   "Celsius and kilometres per hour": "सेल्सियस और किलोमीटर प्रति घंटा",
@@ -17,7 +18,6 @@
   "Search for a city or postal code. Your location is never detected automatically.": "शहर या डाक कोड खोजें। आपका स्थान अपने आप नहीं पता लगाया जाता।",
   "No locations found. Try a nearby city or a different spelling.": "कोई स्थान नहीं मिला। पास के शहर या दूसरी वर्तनी से खोजें।",
   "System tray unavailable on this desktop": "इस डेस्कटॉप पर पैनल संकेतक उपलब्ध नहीं है",
-  "Closing the window keeps weather in your system tray": "विंडो बंद करने पर मौसम पैनल में रहेगा",
   "Closing the window quits Open Meteo": "विंडो बंद करने से Open Meteo बंद हो जाएगा",
   "Weather is displayed beside the GNOME clock": "मौसम GNOME घड़ी के पास दिख रहा है",
   "Showing saved weather.": "सहेजा हुआ मौसम दिखाया जा रहा है।",

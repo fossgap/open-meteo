@@ -23,6 +23,7 @@ pub enum Command {
 
 pub enum TrayEvent {
     Ready(Result<ksni::blocking::Handle<WeatherTray>, String>),
+    Stopped,
     Availability(bool),
     Activate(Option<String>),
     Command(Command),
@@ -35,7 +36,6 @@ pub struct WeatherTray {
     pub units: Units,
     pub stale: bool,
     pub demo: bool,
-    pub clock_active: bool,
     pub icons: Vec<ksni::Icon>,
     native_label: bool,
 }
@@ -85,13 +85,6 @@ impl ksni::Tray for WeatherTray {
     }
     fn title(&self) -> String {
         self.summary()
-    }
-    fn status(&self) -> ksni::Status {
-        if self.clock_active {
-            ksni::Status::Passive
-        } else {
-            ksni::Status::Active
-        }
     }
     fn icon_name(&self) -> String {
         if !self.native_label && !self.icons.is_empty() {
@@ -263,6 +256,9 @@ impl ksni::Tray for WeatherTray {
 }
 
 pub fn start(sender: Sender<TrayEvent>, online: Arc<AtomicBool>, demo: bool) {
+    // ksni reports initial registration failures, then later host changes; it
+    // does not call watcher_online for the initial successful registration.
+    online.store(true, Ordering::Relaxed);
     std::thread::spawn(move || {
         let tray = WeatherTray {
             sender: sender.clone(),
@@ -271,7 +267,6 @@ pub fn start(sender: Sender<TrayEvent>, online: Arc<AtomicBool>, demo: bool) {
             units: Units::Celsius,
             stale: true,
             demo,
-            clock_active: false,
             icons: vec![],
             native_label: desktop_has_native_labels(
                 &std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default(),
@@ -282,6 +277,14 @@ pub fn start(sender: Sender<TrayEvent>, online: Arc<AtomicBool>, demo: bool) {
             .spawn()
             .map_err(|error| error.to_string());
         let _ = sender.send(TrayEvent::Ready(handle));
+    });
+}
+
+pub fn stop(handle: ksni::blocking::Handle<WeatherTray>, sender: Sender<TrayEvent>) {
+    let shutdown = handle.shutdown();
+    std::thread::spawn(move || {
+        shutdown.wait();
+        let _ = sender.send(TrayEvent::Stopped);
     });
 }
 
@@ -410,7 +413,7 @@ mod tests {
     use ksni::Tray;
 
     #[test]
-    fn single_item_keeps_its_icon_and_becomes_passive_for_the_clock() {
+    fn single_item_keeps_its_icon_and_temperature_with_shared_activation() {
         let (sender, receiver) = std::sync::mpsc::channel();
         let mut tray = WeatherTray {
             sender,
@@ -419,7 +422,6 @@ mod tests {
             units: Units::Celsius,
             stale: true,
             demo: false,
-            clock_active: false,
             icons: vec![],
             native_label: false,
         };
@@ -428,8 +430,6 @@ mod tests {
         assert!(tray.icon_name().is_empty(), "Show the combined pixmap");
         assert_eq!(tray.icon_pixmap().len(), 1);
         assert_eq!(tray.status(), ksni::Status::Active);
-        tray.clock_active = true;
-        assert_eq!(tray.status(), ksni::Status::Passive);
         tray.native_label = true;
         assert!(tray.icon_name().starts_with("weather-"));
         assert!(

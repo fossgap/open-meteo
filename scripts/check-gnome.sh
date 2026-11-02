@@ -19,6 +19,7 @@ export XDG_RUNTIME_DIR="$test_root/runtime" LIBGL_ALWAYS_SOFTWARE=1 ATSPI_DBUS_I
 export OPEN_METEO_GNOME_SCREENSHOT="$PWD/target/ci/gnome-clock.png"
 export OPEN_METEO_GNOME_INDICATOR_SCREENSHOT="$PWD/target/ci/gnome-indicator.png"
 export OPEN_METEO_GNOME_APPIMAGE_SCREENSHOT="$PWD/target/ci/gnome-appimage.png"
+export OPEN_METEO_GNOME_CLOCK_APP_SCREENSHOT="$PWD/target/ci/gnome-clock-app.png"
 mkdir -p target/ci
 # The nested shell must expand the address created by dbus-run-session.
 # shellcheck disable=SC2016
@@ -41,4 +42,9 @@ if [ -n "${OPEN_METEO_TEST_BINARY:-}" ]; then
         export DBUS_SYSTEM_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS"
         exec gnome-shell-test-tool --headless --disable-animations --extension "$1" "$2"
     ' sh "$test_root/indicator.zip" "$PWD/tests/gnome_appimage.js"
+    # shellcheck disable=SC2016
+    timeout 120s dbus-run-session -- sh -c '
+        export DBUS_SYSTEM_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS"
+        exec gnome-shell-test-tool --headless --disable-animations --extension "$1" "$2"
+    ' sh "$test_root/extension.zip" "$PWD/tests/gnome_clock_app.js"
 fi

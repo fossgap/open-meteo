@@ -98,6 +98,22 @@ impl Node {
         let state: Vec<u32> = first(&self.call(ACCESSIBLE, "GetState", None)?)?;
         Ok(state.first().is_some_and(|bits| bits & (1 << 25) != 0))
     }
+    pub fn child_diagnostics(&self) -> String {
+        format!(
+            "{} {} count={:?} children={:?} first={:?}",
+            self.service,
+            self.path,
+            property(
+                &self.bus,
+                &self.service,
+                &self.path,
+                ACCESSIBLE,
+                "ChildCount"
+            ),
+            self.call(ACCESSIBLE, "GetChildren", None),
+            self.call(ACCESSIBLE, "GetChildAtIndex", Some(&(0i32,).to_variant()))
+        )
+    }
 }
 
 pub struct Accessibility(gio::DBusConnection);
@@ -132,10 +148,16 @@ impl Accessibility {
             if !visited.insert((service.clone(), path.clone())) {
                 continue;
             }
-            let Ok(name) = property(&self.0, &service, &path, ACCESSIBLE, "Name")
+            let name = match property(&self.0, &service, &path, ACCESSIBLE, "Name")
                 .and_then(|v| value::<String>(&v))
-            else {
-                continue;
+            {
+                Ok(name) => name,
+                Err(error) => {
+                    if std::env::var_os("OPEN_METEO_TEST_TRACE").is_some() {
+                        eprintln!("A11Y lookup {service} {path}: {error:#}");
+                    }
+                    continue;
+                }
             };
             let node = Node {
                 bus: self.0.clone(),

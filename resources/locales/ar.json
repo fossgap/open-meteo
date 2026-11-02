@@ -1,4 +1,5 @@
 {
+  "Weather": "الطقس",
   "Search locations (Ctrl+L)": "البحث عن موقع (Ctrl+L)",
   "Refresh weather (Ctrl+R)": "تحديث الطقس (Ctrl+R)",
   "Celsius and kilometres per hour": "درجة مئوية وكيلومتر في الساعة",
@@ -17,7 +18,6 @@
   "Search for a city or postal code. Your location is never detected automatically.": "ابحث عن مدينة أو رمز بريدي. لا يُحدَّد موقعك تلقائيًا أبدًا.",
   "No locations found. Try a nearby city or a different spelling.": "لم يُعثر على مواقع. جرّب مدينة قريبة أو تهجئة أخرى.",
   "System tray unavailable on this desktop": "مؤشر اللوحة غير متاح على سطح المكتب هذا",
-  "Closing the window keeps weather in your system tray": "يبقى الطقس في اللوحة عند إغلاق النافذة",
   "Closing the window quits Open Meteo": "إغلاق النافذة ينهي Open Meteo",
   "Weather is displayed beside the GNOME clock": "يظهر الطقس بجانب ساعة GNOME",
   "Showing saved weather.": "تُعرض بيانات الطقس المحفوظة.",
