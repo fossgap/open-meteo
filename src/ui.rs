@@ -4,7 +4,7 @@ use crate::{
     i18n::{self, tf, tr},
     model::{Forecast, Location, Units},
     storage::{Preferences, SavedForecast, Store},
-    tray::{self, Command, TrayEvent, WeatherTray},
+    tray::{self, Command, TrayEvent},
 };
 use adw::prelude::*;
 use gtk::{Orientation, gio, glib};
@@ -40,7 +40,7 @@ struct State {
     generation: u64,
     search_generation: u64,
     search_results: Vec<Location>,
-    tray: Option<ksni::blocking::Handle<WeatherTray>>,
+    tray: Option<tray::PanelHandle>,
 }
 
 struct Ui {
@@ -418,9 +418,7 @@ pub fn build(app: &adw::Application, demo: bool) {
     let this = ui.clone();
     app.connect_shutdown(move |_| {
         this.desktop.borrow_mut().take();
-        if let Some(handle) = this.state.borrow_mut().tray.take() {
-            handle.shutdown();
-        }
+        drop(this.state.borrow_mut().tray.take());
     });
     tray::start(tray_sender, ui.online.clone(), demo);
     ui.render();
@@ -681,13 +679,11 @@ impl Ui {
             );
         }
         if let Some(handle) = &state.tray {
-            let icons = tray::panel_icons(state.saved.as_ref(), state.prefs.units);
             handle.update(|tray| {
                 tray.saved = state.saved.clone();
                 tray.units = state.prefs.units;
                 tray.stale = state.stale;
                 tray.clock_active = self.clock_online.get();
-                tray.icons = icons;
             });
         }
     }

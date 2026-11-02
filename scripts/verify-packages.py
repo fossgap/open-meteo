@@ -176,6 +176,7 @@ def verify_artifacts(directory, files, version):
     required = {prefix + name for name in ["Cargo.toml", "Cargo.lock", "src/main.rs", "tests/ui_smoke.py", "tests/fixtures/forecast.json", "scripts/package.sh", "scripts/verify-packages.py", "packaging/arch/PKGBUILD", "packaging/rpm/open-meteo.spec", "Dockerfile", "Makefile", "README.md", ".github/workflows/test-ci.yml", ".github/workflows/release-ci.yml"]}
     require(required <= source.keys(), f"Source archive missing files: {required - source.keys()}")
     for absolute in [ROOT / "src/gnome_setup.rs", ROOT / "tests/gnome_setup.py",
+                     ROOT / "src/tray.rs", ROOT / "tests/tray_panel.py", ROOT / "scripts/check-tray.sh",
                      *(ROOT / "resources/locales").glob("*.json"), *(ROOT / "resources/gnome-extension").glob("*")]:
         path = absolute.relative_to(ROOT)
         require(prefix + str(path) in source, f"Source archive missing {path}")

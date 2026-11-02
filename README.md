@@ -34,9 +34,10 @@ A [FOSSGap](https://github.com/fossgap) project and independent desktop client; 
   details, including sunrise, sunset, and maximum wind.
 - **Location search:** cities and postal codes, with the five most recent places
   remembered. Your location is never detected automatically.
-- **Weather in the panel:** the weather condition icon with a temperature badge
-  on StatusNotifier desktops, plus hourly and weekly forecasts, refresh, open,
-  and quit actions. Both remain visible in the tray's square icon slot.
+- **Weather in the panel:** the weather condition icon beside the temperature,
+  both at normal size, plus hourly and weekly forecasts, refresh, open, and quit
+  actions. StatusNotifier panels receive two items in the same application group;
+  either opens the forecast. Horizontal panels show the pair on one line.
 - **GNOME clock:** the bundled Open Meteo Clock extension places the weather icon
   and temperature beside the system clock, with forecast actions in its menu.
 - **Offline support:** the last successful forecast for each location is saved.
@@ -316,6 +317,11 @@ Screenshots and logs go to `.impeccable/review/` (gitignored).
 Set `OPEN_METEO_TEST_BINARY` to test a packaged executable and
 `OPEN_METEO_TEST_OUTPUT_DIR` to keep its captures separate. For an AppImage on a
 FUSE-less host, also set `APPIMAGE_EXTRACT_AND_RUN=1`.
+
+With `xfce4-panel` and `xfconf` installed, `sh scripts/check-tray.sh` also checks
+the actual panel layout in light and dark themes: full-size weather icon on the
+left, temperature on the right, unit updates, both click targets, and cleanup.
+It uses a private display, D-Bus session, and XFCE settings directory.
 
 | Source | Responsibility |
 | --- | --- |

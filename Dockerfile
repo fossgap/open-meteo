@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-gi gir1.2-atspi-2.0 at-spi2-core \
     xvfb xauth dbus-x11 xdotool x11-utils imagemagick fonts-dejavu-core fonts-noto-core fonts-noto-cjk \
     shared-mime-info fontconfig-config dconf-gsettings-backend \
+    xfce4-panel xfconf \
     ca-certificates curl file rpm cpio zstd desktop-file-utils shellcheck \
     && rm -rf /var/lib/apt/lists/* \
     && rustup component add rustfmt clippy

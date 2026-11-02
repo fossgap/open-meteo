@@ -11,6 +11,7 @@ python3 -m unittest discover -s tests -p 'test_packaging.py' -v
 cargo build --locked
 export OPEN_METEO_TEST_OUTPUT_DIR="$PWD/target/ci/source-ui"
 sh scripts/check-ui.sh
+sh scripts/check-tray.sh
 if [ "$mode" = release ]; then
     cargo build --release --locked
     export OPEN_METEO_BINARY="$PWD/target/release/open-meteo"
@@ -27,4 +28,5 @@ if [ "$mode" = release ]; then
     export OPEN_METEO_TEST_BINARY="$PWD/$appimage"
     export OPEN_METEO_TEST_OUTPUT_DIR="$PWD/target/ci/appimage-ui"
     sh scripts/check-ui.sh
+    sh scripts/check-tray.sh
 fi

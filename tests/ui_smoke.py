@@ -219,28 +219,29 @@ def run_checks():
             # The real Rust tray must register and expose weather via D-Bus.
             def registered():
                 return call(WATCHER, "/StatusNotifierWatcher", "org.freedesktop.DBus.Properties", "Get", GLib.Variant("(ss)", (WATCHER, "RegisteredStatusNotifierItems"))).unpack()[0]
-            item = wait_for(registered, "tray registration")[-1]
-            service, path = item.split("/", 1)
+            wait_for(lambda: len(registered()) == 2, "weather and temperature tray registration")
+            def item_property(item, name):
+                service, path = item.split("/", 1)
+                return call(service, "/" + path, "org.freedesktop.DBus.Properties", "Get", GLib.Variant("(ss)", ("org.kde.StatusNotifierItem", name))).unpack()[0]
+            weather_item = next(item for item in registered() if item_property(item, "IconName").startswith("weather-"))
+            temperature_item = next(item for item in registered() if item_property(item, "IconName") == "")
+            service, path = weather_item.split("/", 1)
             path = "/" + path
-            title = call(service, path, "org.freedesktop.DBus.Properties", "Get", GLib.Variant("(ss)", ("org.kde.StatusNotifierItem", "Title"))).unpack()[0]
-            assert "Paris" in title and "21°" in title and "sample" in title, title
             def tray_property(name):
-                return call(service, path, "org.freedesktop.DBus.Properties", "Get", GLib.Variant("(ss)", ("org.kde.StatusNotifierItem", name))).unpack()[0]
-            assert tray_property("IconName") == "", "Host must render the combined weather and temperature pixmap"
-            pixmaps = tray_property("IconPixmap")
-            assert len(pixmaps) == 4 and all(len(pixels) == width * height * 4 for width, height, pixels in pixmaps), "Missing weather and temperature pixmaps"
-            assert tray_property("ToolTip")[0].startswith("weather-"), "Condition icon must remain available"
+                return item_property(weather_item, name)
+            title = tray_property("Title")
+            assert "Paris" in title and "21°" in title and "sample" in title, title
+            assert tray_property("Id") == item_property(temperature_item, "Id"), "Keep the pair in the same application group"
+            weather_icon = tray_property("IconName")
+            assert tray_property("IconPixmap") == [], "Weather must keep its full-size themed icon"
+            pixmaps = item_property(temperature_item, "IconPixmap")
+            assert len(pixmaps) == 4 and all(len(pixels) == width * height * 4 for width, height, pixels in pixmaps), "Missing separate temperature pixmaps"
             for width, height, pixels in pixmaps:
-                top = pixels[:height // 2 * width * 4]
-                bottom = pixels[height * 2 * width:]
-                assert any(top[::4]) and any(bottom[::4]), "Both the weather symbol and temperature must render"
-                # Retain the actual SNI pixels for visual review, including alpha.
                 rgba = bytes(channel for i in range(0, len(pixels), 4) for channel in (*pixels[i+1:i+4], pixels[i]))
-                subprocess.run(["convert", "-size", f"{width}x{height}", "-depth", "8", "rgba:-", str(output / f"tray-{width}.png")], input=rgba, check=True)
+                subprocess.run(["convert", "-size", f"{width}x{height}", "-depth", "8", "rgba:-", str(output / f"tray-temperature-{width}.png")], input=rgba, check=True)
             click("°F")
-            wait_for(lambda: tray_property("IconPixmap") != pixmaps, "temperature icon changes with units")
-            for (width, height, before), (_, _, after) in zip(pixmaps, tray_property("IconPixmap")):
-                assert before[:height // 2 * width * 4] == after[:height // 2 * width * 4], "Changing units must not remove or replace the weather symbol"
+            wait_for(lambda: item_property(temperature_item, "IconPixmap") != pixmaps, "temperature changes with units")
+            assert tray_property("IconName") == weather_icon, "Changing units must not replace the weather icon"
             click("°C")
             menu_path = call(service, path, "org.freedesktop.DBus.Properties", "Get", GLib.Variant("(ss)", ("org.kde.StatusNotifierItem", "Menu"))).unpack()[0]
             layout = call(service, menu_path, "com.canonical.dbusmenu", "GetLayout", GLib.Variant("(iias)", (0, -1, []))).unpack()
@@ -259,6 +260,7 @@ def run_checks():
             def bridge(method):
                 return call(bridge_service, bridge_path, bridge_interface, method)
             snapshot = json.loads(bridge("Attach").unpack()[0])
+            wait_for(lambda: all(item_property(item, "Status") == "Passive" for item in [weather_item, temperature_item]), "clock hides both tray items")
             assert snapshot["temperature"] == "21°C" and snapshot["location"] == "Paris"
             click("Close")
             wait_for(lambda: "IsUnMapped" in subprocess.check_output(["xwininfo", "-id", window], text=True), "close to GNOME clock")
@@ -266,6 +268,7 @@ def run_checks():
             wait_for(lambda: "IsViewable" in subprocess.check_output(["xwininfo", "-id", window], text=True), "GNOME forecast action")
             click("Close")
             bridge("Detach")
+            wait_for(lambda: all(item_property(item, "Status") == "Active" for item in [weather_item, temperature_item]), "clock detach restores both tray items")
             wait_for(lambda: "IsViewable" in subprocess.check_output(["xwininfo", "-id", window], text=True), "extension disable restores hidden window")
             # A vanished consumer must release its lease without calling Detach.
             peer = Gio.DBusConnection.new_for_address_sync(os.environ["DBUS_SESSION_BUS_ADDRESS"],

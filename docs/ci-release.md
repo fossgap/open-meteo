@@ -19,6 +19,9 @@ runs. The checks cover:
 - Weather-symbol retention during temperature updates, GNOME bridge
   attach/detach/crash recovery, all six translations at wide and narrow sizes,
   and language selection/persistence.
+- A real XFCE panel checks the icon and temperature side by side at normal size
+  in light and dark themes, unit changes, both click targets, and cleanup. This
+  runs for the source binary and AppImage, with private XFCE settings.
 - GNOME setup against a private D-Bus service and settings: immediate activation,
   first-install scheduling, repeated setup, updates, and failure states. The same
   checks run for source builds, AppImages, and installed native packages.
