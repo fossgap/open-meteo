@@ -10,13 +10,14 @@ homepage = "https://github.com/fossgap/open-meteo"
 [dependencies]
 adw = { package = "libadwaita", version = "0.8", features = ["v1_2"] }
 gtk = { package = "gtk4", version = "0.10", features = ["v4_8"] }
+gdk-wayland = { package = "gdk4-wayland", version = "0.10" }
 pangocairo = "0.21"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
-ksni = { version = "0.3", default-features = false, features = ["async-io", "blocking"] }
+ksni = { path = "vendor/ksni", version = "=0.3.7", default-features = false, features = ["async-io", "blocking"] }
 
 [profile.dev]
 debug = 0

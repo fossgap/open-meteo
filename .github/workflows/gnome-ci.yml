@@ -18,7 +18,7 @@ jobs:
           persist-credentials: false
       - name: Build isolated GNOME 50 test environment
         run: docker build -f tests/gnome.Dockerfile -t open-meteo-gnome .
-      - name: Test weather inside the system clock
+      - name: Test weather in the system clock and as one labeled tray item
         run: |
           docker create --name meteo-gnome --tmpfs /tmp:rw,exec --shm-size=1g open-meteo-gnome
           docker start -a meteo-gnome
@@ -29,6 +29,7 @@ jobs:
           mkdir -p target/gnome-evidence
           docker logs meteo-gnome > target/gnome-evidence/shell.log 2>&1 || true
           docker cp meteo-gnome:/workspace/target/ci/gnome-clock.png target/gnome-evidence/ || true
+          docker cp meteo-gnome:/workspace/target/ci/gnome-indicator.png target/gnome-evidence/ || true
           docker rm -f meteo-gnome || true
       - name: Retain clock screenshot and logs
         if: always()

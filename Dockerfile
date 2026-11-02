@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV CARGO_BUILD_JOBS=2 LC_ALL=C.UTF-8
 WORKDIR /workspace
 COPY Cargo.toml Cargo.lock ./
+COPY vendor ./vendor
 COPY src ./src
 COPY resources ./resources
 COPY tests/fixtures ./tests/fixtures

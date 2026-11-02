@@ -24,3 +24,7 @@ for theme in Adwaita Adwaita:dark; do
     cleanup
     test_runtime=
 done
+test_runtime=$(mktemp -d "${TMPDIR:-/tmp}/open-meteo-tray-runtime.XXXXXX")
+export XDG_RUNTIME_DIR="$test_runtime"
+timeout 90s dbus-run-session -- xvfb-run -a -s '-screen 0 960x1100x24' \
+    "${PYTHON:-/usr/bin/python3}" tests/tray_label.py

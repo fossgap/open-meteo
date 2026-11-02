@@ -19,9 +19,10 @@ runs. The checks cover:
 - Weather-symbol retention during temperature updates, GNOME bridge
   attach/detach/crash recovery, all six translations at wide and narrow sizes,
   and language selection/persistence.
-- A real XFCE panel checks the icon and temperature side by side at normal size
-  in light and dark themes, unit changes, both click targets, and cleanup. This
-  runs for the source binary and AppImage, with private XFCE settings.
+- A real XFCE panel checks one button containing the icon and temperature on
+  one line in light and dark themes, unit changes, a shared hover/click area,
+  and cleanup. The native label properties and update signals are also checked.
+  These run for the source binary and AppImage, with private settings.
 - GNOME setup against a private D-Bus service and settings: immediate activation,
   first-install scheduling, repeated setup, updates, and failure states. The same
   checks run for source builds, AppImages, and installed native packages.
@@ -29,6 +30,15 @@ runs. The checks cover:
   an isolated Fedora 44 container: clock placement, forecast actions, unit and
   saved-weather updates, app restarts, and immediate enablement over GNOME's
   public D-Bus interface. The host desktop and installed extensions are untouched.
+- The same GNOME environment verifies AppIndicator's native weather icon and
+  temperature label inside one button, readable sizes, shared hit targets,
+  updates and activation.
+
+When a built AppImage is available inside the GNOME test container, set
+`OPEN_METEO_TEST_BINARY` to its absolute path before running
+`sh scripts/check-gnome.sh`. This additionally checks the real packaged tray,
+Wayland activation of a minimized forecast window, and removal on quit. Its
+screenshot is saved as `target/ci/gnome-appimage.png`.
 
 The native tests use synthetic weather, temporary settings, mock desktop services,
 and a refused local proxy. They do not require the weather API. Live API testing

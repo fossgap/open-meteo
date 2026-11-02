@@ -35,9 +35,9 @@ A [FOSSGap](https://github.com/fossgap) project and independent desktop client; 
 - **Location search:** cities and postal codes, with the five most recent places
   remembered. Your location is never detected automatically.
 - **Weather in the panel:** the weather condition icon beside the temperature,
-  both at normal size, plus hourly and weekly forecasts, refresh, open, and quit
-  actions. StatusNotifier panels receive two items in the same application group;
-  either opens the forecast. Horizontal panels show the pair on one line.
+  on one line inside a single clickable tray item, plus hourly and weekly
+  forecasts, refresh, open, and quit actions. The complete icon shares one hover
+  area and menu; clicking anywhere on it opens the forecast.
 - **GNOME clock:** the bundled Open Meteo Clock extension places the weather icon
   and temperature beside the system clock, with forecast actions in its menu.
 - **Offline support:** the last successful forecast for each location is saved.
@@ -113,7 +113,10 @@ app in the tray by default. Click the icon to reopen the forecast, or open its m
 for a quick outlook. Turn off **Keep running in system tray** in the main menu to
 quit when the window closes. **Quit** always exits the app.
 
-The tray icon itself displays the temperature; its tooltip includes the location,
+The tray contains one item with the condition symbol and temperature side by
+side. GNOME's AppIndicator host and Unity use a native icon and text label in
+one button. Icon-only hosts use a combined horizontal image, whose size is
+limited by the panel's icon setting. Its tooltip includes the location,
 condition, unit, and whether the forecast is saved. If neither a tray nor the
 GNOME clock extension is available, closing quits normally. If the last panel
 connection disappears while the window is hidden, the window reopens.
@@ -319,9 +322,15 @@ Set `OPEN_METEO_TEST_BINARY` to test a packaged executable and
 FUSE-less host, also set `APPIMAGE_EXTRACT_AND_RUN=1`.
 
 With `xfce4-panel` and `xfconf` installed, `sh scripts/check-tray.sh` also checks
-the actual panel layout in light and dark themes: full-size weather icon on the
-left, temperature on the right, unit updates, both click targets, and cleanup.
+the actual panel layout in light and dark themes: one button containing the
+weather symbol on the left and temperature on the right, unit updates, a shared
+hover area, clicks across the whole item, and cleanup.
 It uses a private display, D-Bus session, and XFCE settings directory.
+The same command verifies native icon-and-label properties, update signals,
+and activation against the real Rust tray service.
+
+The small [ksni label extension](vendor/ksni/OPEN-METEO.md) is vendored with its
+upstream license so the icon and native temperature label share one tray item.
 
 | Source | Responsibility |
 | --- | --- |

@@ -4,7 +4,7 @@ use crate::{
     i18n::{self, tf, tr},
     model::{Forecast, Location, Units},
     storage::{Preferences, SavedForecast, Store},
-    tray::{self, Command, TrayEvent},
+    tray::{self, Command, TrayEvent, WeatherTray},
 };
 use adw::prelude::*;
 use gtk::{Orientation, gio, glib};
@@ -40,7 +40,7 @@ struct State {
     generation: u64,
     search_generation: u64,
     search_results: Vec<Location>,
-    tray: Option<tray::PanelHandle>,
+    tray: Option<ksni::blocking::Handle<WeatherTray>>,
 }
 
 struct Ui {
@@ -418,7 +418,9 @@ pub fn build(app: &adw::Application, demo: bool) {
     let this = ui.clone();
     app.connect_shutdown(move |_| {
         this.desktop.borrow_mut().take();
-        drop(this.state.borrow_mut().tray.take());
+        if let Some(handle) = this.state.borrow_mut().tray.take() {
+            handle.shutdown().wait();
+        }
     });
     tray::start(tray_sender, ui.online.clone(), demo);
     ui.render();
@@ -659,6 +661,20 @@ impl Ui {
                     self.window.present();
                 }
             }
+            TrayEvent::Activate(token) => {
+                if let Some(token) = token {
+                    if let Ok(display) = gtk::prelude::WidgetExt::display(&self.window)
+                        .downcast::<gdk_wayland::WaylandDisplay>()
+                    {
+                        // GTK 4.8's window startup-id setter is a no-op on
+                        // Wayland. Its focus request consumes the display token.
+                        display.set_startup_notification_id(&token);
+                    } else {
+                        self.window.set_startup_id(&token);
+                    }
+                }
+                self.window.present();
+            }
             TrayEvent::Command(command) => match command {
                 Command::Show => self.window.present(),
                 Command::Refresh => self.refresh(),
@@ -679,11 +695,13 @@ impl Ui {
             );
         }
         if let Some(handle) = &state.tray {
+            let icons = tray::panel_icons(state.saved.as_ref(), state.prefs.units);
             handle.update(|tray| {
                 tray.saved = state.saved.clone();
                 tray.units = state.prefs.units;
                 tray.stale = state.stale;
                 tray.clock_active = self.clock_online.get();
+                tray.icons = icons;
             });
         }
     }

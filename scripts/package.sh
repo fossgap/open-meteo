@@ -27,7 +27,7 @@ if [ "$package_format" = arch-source ]; then
   mkdir -p "$archive_dir"
   tar --exclude='__pycache__' --exclude='*.pyc' --transform "s,^,open-meteo-$package_version/," \
     -czf "$archive_dir/open-meteo-$package_version.tar.gz" \
-    Cargo.toml Cargo.lock src tests resources docs scripts packaging Makefile README.md \
+    Cargo.toml Cargo.lock src tests resources docs scripts packaging vendor Makefile README.md \
     Dockerfile .dockerignore .gitignore .github
   sed "s/^pkgver=.*/pkgver=$package_version/" packaging/arch/PKGBUILD > "$archive_dir/PKGBUILD"
   source_hash=$(sha256sum "$archive_dir/open-meteo-$package_version.tar.gz" | cut -d ' ' -f 1)

@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import time
+from types import SimpleNamespace
 
 import gi
 gi.require_version("Atspi", "2.0")
@@ -51,6 +52,9 @@ def run():
         config = private / "config/xfce4/xfconf/xfce-perchannel-xml"
         config.mkdir(parents=True)
         (config / "xfce4-panel.xml").write_text(CONFIG)
+        gtk_config = private / "config/gtk-3.0"
+        gtk_config.mkdir()
+        (gtk_config / "settings.ini").write_text("[Settings]\ngtk-enable-animations=false\n")
         # D-Bus-activated xfconfd needs the private directories too. Setting only
         # the panel subprocess environment would leave its settings unisolated.
         bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
@@ -97,13 +101,13 @@ def run():
                     window = xdo("search", "--name", "^Open Meteo$").splitlines()[0]
                     xdo("windowmove", window, 0, 80)
                     xdo("mousemove", 900, 700)
-                    def visible_pair():
+                    def visible_item():
                         # Xvfb has no window manager to keep windows clear of
                         # dock panels while GTK finishes its initial layout.
                         xdo("windowmove", window, 0, 80)
-                        return len(tray_buttons()) == 2
+                        return len(tray_buttons()) == 1
                     try:
-                        wait_for(visible_pair, "two full-size tray elements")
+                        wait_for(visible_item, "one combined weather tray button")
                     except AssertionError:
                         capture("tray-failure.png")
                         for node in nodes():
@@ -114,33 +118,44 @@ def run():
                                     node.get_name(), rect.x, rect.y, rect.width, rect.height,
                                     node.get_state_set().contains(Atspi.StateType.SHOWING), flush=True)
                         raise
-                    left, right = [rect for _, rect in tray_buttons()]
-                    assert left.y == right.y and left.height == right.height, "Weather and temperature must be on the same line"
-                    assert left.x + left.width == right.x, "Keep weather and temperature adjacent"
+                    _, rect = tray_buttons()[0]
+                    # The host must expose one clickable widget for the complete
+                    # weather + temperature display, including the space between.
+                    weather_width = int(rect.width * 0.38)
+                    left = SimpleNamespace(x=rect.x, y=rect.y, width=weather_width, height=rect.height)
+                    right = SimpleNamespace(x=rect.x + weather_width, y=rect.y,
+                        width=rect.width - weather_width, height=rect.height)
                     suffix = "dark" if theme.endswith(":dark") else "light"
                     before = capture(f"tray-{suffix}-celsius.png")
                     click("°F")
                     wait_for(lambda: any(n.get_name() == "70°" for n in nodes()), "Fahrenheit update")
                     after = capture(f"tray-{suffix}-fahrenheit.png")
+                    assert len(tray_buttons()) == 1, "Unit changes must not create a second tray button"
                     assert pixels(before, left) == pixels(after, left), "The left element must remain the weather symbol"
                     assert pixels(before, right) != pixels(after, right), "The right element must be the changing temperature"
-                    for _, rect in tray_buttons():
+                    # Hover either half: the entire same button is highlighted.
+                    xdo("mousemove", rect.x + rect.width // 4, rect.y + rect.height // 2)
+                    weather_hover = capture(f"tray-{suffix}-hover-weather.png")
+                    xdo("mousemove", rect.x + 3 * rect.width // 4, rect.y + rect.height // 2)
+                    temperature_hover = capture(f"tray-{suffix}-hover-temperature.png")
+                    assert pixels(weather_hover, rect) == pixels(temperature_hover, rect), "Both halves must share the same hover area"
+                    for fraction in [0.2, 0.42, 0.75]:
                         click("Close")
                         wait_for(lambda: "IsUnMapped" in subprocess.check_output(["xwininfo", "-id", window], text=True), "hide forecast")
-                        xdo("mousemove", rect.x + rect.width // 2, rect.y + rect.height // 2)
+                        xdo("mousemove", rect.x + int(rect.width * fraction), rect.y + rect.height // 2)
                         xdo("click", 1)
-                        wait_for(lambda: "IsViewable" in subprocess.check_output(["xwininfo", "-id", window], text=True), "open from either tray element")
+                        wait_for(lambda: "IsViewable" in subprocess.check_output(["xwininfo", "-id", window], text=True), "open from any part of the single tray item")
                     xdo("windowfocus", window)
                     xdo("key", "ctrl+q")
                     app.wait(timeout=5)
-                    wait_for(lambda: len(tray_buttons()) == 0, "quit removes both tray elements")
+                    wait_for(lambda: len(tray_buttons()) == 0, "quit removes the tray item")
                 finally:
                     if app and app.poll() is None:
                         app.terminate()
                         app.wait(timeout=5)
                     panel.terminate()
                     panel.wait(timeout=5)
-    print(f"TRAY_PANEL_SUITE_PASSED ({theme_name}): full-size weather icon beside temperature, units, both open actions, and cleanup")
+    print(f"TRAY_PANEL_SUITE_PASSED ({theme_name}): one weather + temperature item, units, shared hover/click area, and cleanup")
 
 
 if __name__ == "__main__":
