@@ -1,0 +1,44 @@
+window.meteo { background: @meteo_ground; color: @meteo_ink; }
+.forecast-page { padding: 16px 24px 24px; }
+.current-weather { background: @meteo_sky; color: @meteo_ink; border-radius: 16px; padding: 24px; }
+.location-name { font-size: 26px; font-weight: 700; }
+.location-subtitle { color: @meteo_muted; font-size: 13px; }
+.temperature { font-size: 76px; font-weight: 300; font-feature-settings: "tnum"; }
+.conditions { font-size: 18px; font-weight: 600; }
+.weather-symbol { color: @meteo_accent; }
+.current-details { color: @meteo_muted; }
+.stat-label { font-size: 12px; color: @meteo_muted; }
+.stat-value { font-size: 16px; font-weight: 600; font-feature-settings: "tnum"; }
+.weather-stats { margin-top: 16px; }
+.weather-stats flowboxchild { padding: 0; }
+.outlooks { margin-top: 28px; }
+.outlooks > flowboxchild { padding: 0; }
+.section-title { font-size: 19px; font-weight: 700; }
+.section-caption { color: @meteo_muted; font-size: 12px; }
+.hourly-scroll { margin-top: 16px; padding-bottom: 8px; }
+.hour { padding: 12px 6px; border-radius: 12px; }
+.hour:first-child { background: @meteo_sky; }
+.hour-time { font-size: 12px; color: @meteo_muted; }
+.hour-temperature { font-size: 17px; font-weight: 600; font-feature-settings: "tnum"; }
+.rain { font-size: 12px; color: @meteo_rain; font-feature-settings: "tnum"; }
+.chart { margin-top: 16px; }
+.daily-list { margin-top: 14px; }
+.daily-row { padding: 10px 0; }
+.daily-row label { font-feature-settings: "tnum"; }
+.daily-list expander { border-bottom: 1px solid @meteo_rule; }
+.daily-list expander:last-child { border-bottom: none; }
+.day-name { font-weight: 600; }
+.low-temperature { color: @meteo_muted; }
+.high-temperature { font-weight: 600; }
+.day-details { padding: 4px 8px 14px 20px; color: @meteo_muted; font-size: 12px; }
+.daylight { padding: 16px 0; }
+.footer { margin-top: 24px; }
+.footer label, .footer link { font-size: 12px; }
+.notice { background: @meteo_notice; padding: 12px 18px; }
+.notice label { color: @meteo_ink; font-size: 13px; }
+.search-content { padding: 12px; }
+.search-hint { color: @meteo_muted; padding: 12px 4px; }
+.location-result { padding: 10px 8px; }
+.location-result .name { font-weight: 600; }
+.location-result .region { font-size: 12px; color: @meteo_muted; }
+.unit-toggle button { padding-left: 10px; padding-right: 10px; }

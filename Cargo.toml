@@ -1,0 +1,25 @@
+[package]
+name = "open-meteo"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "A native Linux weather app with hourly forecasts and a system tray"
+repository = "https://github.com/fossgap/open-meteo"
+homepage = "https://github.com/fossgap/open-meteo"
+
+[dependencies]
+adw = { package = "libadwaita", version = "0.8", features = ["v1_2"] }
+gtk = { package = "gtk4", version = "0.10", features = ["v4_8"] }
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+ksni = { version = "0.3", default-features = false, features = ["async-io", "blocking"] }
+
+[profile.dev]
+debug = 0
+
+[profile.release]
+strip = true
+lto = "thin"

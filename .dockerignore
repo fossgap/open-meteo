@@ -1,0 +1,14 @@
+.git
+.agents
+.codex
+.aws
+.impeccable
+.worktrees
+target
+dist
+**/__pycache__
+**/*.pyc
+image.png
+PRODUCT.md
+DESIGN.md
+*.log

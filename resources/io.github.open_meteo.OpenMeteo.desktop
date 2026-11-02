@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Open Meteo
+Comment=Current weather, hourly forecasts and the week ahead
+Exec=open-meteo
+Icon=io.github.open_meteo.OpenMeteo
+Terminal=false
+Categories=Utility;GTK;
+Keywords=weather;forecast;temperature;rain;meteo;
+StartupNotify=true

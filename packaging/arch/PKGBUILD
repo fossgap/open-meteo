@@ -1,0 +1,27 @@
+# Generate the adjacent source archive with scripts/package.sh arch-source.
+pkgname=open-meteo
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Native Linux weather forecasts with system tray access'
+url='https://github.com/fossgap/open-meteo'
+arch=('x86_64' 'aarch64')
+license=('custom') # The project owner has not selected a code license yet.
+depends=('gtk4>=4.8' 'libadwaita>=1.2' 'ca-certificates' 'adwaita-icon-theme')
+makedepends=('rust' 'pkgconf')
+source=("$pkgname-$pkgver.tar.gz")
+sha256sums=('SKIP') # Replaced with the archive hash by scripts/package.sh.
+
+build() {
+  cd "$pkgname-$pkgver"
+  cargo build --release --locked
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  cargo test --locked
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  make DESTDIR="$pkgdir" PREFIX=/usr install
+}
