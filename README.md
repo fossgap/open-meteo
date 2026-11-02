@@ -11,6 +11,7 @@
 [![Rust 2024](https://img.shields.io/badge/Rust-2024-orange.svg)](Cargo.toml)
 [![GTK 4.8+](https://img.shields.io/badge/GTK-4.8%2B-blue.svg)](Cargo.toml)
 [![Platform: Linux](https://img.shields.io/badge/Platform-Linux-lightgrey.svg)](docs/packaging.md)
+[![License: GPL-3.0-only](https://img.shields.io/badge/License-GPL--3.0--only-blue.svg)](LICENSE)
 
 > A native Linux weather app: current conditions, the next 24 hours, and the week ahead, with quick access from your system tray.
 
@@ -23,7 +24,9 @@ A [FOSSGap](https://github.com/fossgap) project and independent desktop client; 
 
 [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Building from source](#building-from-source) · [CI and releases](docs/ci-release.md)
 
-![Open Meteo showing the Paris weather forecast in its normal interface](docs/preview.png)
+<p align="center">
+  <img src="docs/preview.png" alt="Open Meteo showing the Paris weather forecast in its normal interface">
+</p>
 
 ## Features
 
@@ -361,6 +364,7 @@ weather-alert notifications are not implemented; no official warning feed is con
 
 ## License
 
-The project owner has not selected a source-code license yet. Package metadata
-records that explicitly; this README does not infer a license from other FOSSGap
-projects. Weather data and third-party dependencies retain their respective terms.
+Copyright © 2026 Open Meteo contributors. Licensed under the
+[GNU General Public License v3.0 only](LICENSE) (`GPL-3.0-only`).
+Weather data and third-party dependencies retain their respective terms;
+the vendored ksni library retains its [Unlicense](vendor/ksni/UNLICENSE).

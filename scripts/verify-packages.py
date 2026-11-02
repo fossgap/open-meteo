@@ -14,6 +14,11 @@ ROOT = Path(__file__).resolve().parents[1]
 APP_ID = "io.github.open_meteo.OpenMeteo"
 REPOSITORY = "https://github.com/fossgap/open-meteo"
 EXTENSION = "usr/share/gnome-shell/extensions/open-meteo-clock@fossgap.github.io"
+LICENSE_FILES = {
+    "usr/share/licenses/open-meteo/LICENSE": "LICENSE",
+    "usr/share/licenses/open-meteo/ksni-UNLICENSE": "vendor/ksni/UNLICENSE",
+    "usr/share/doc/open-meteo/copyright": "packaging/copyright",
+}
 PAYLOAD = {
     "usr/bin/open-meteo",
     f"usr/share/applications/{APP_ID}.desktop",
@@ -21,6 +26,7 @@ PAYLOAD = {
     "usr/share/doc/open-meteo/README.md",
 }
 PAYLOAD.update(f"{EXTENSION}/{name}" for name in ("metadata.json", "extension.js", "stylesheet.css"))
+PAYLOAD.update(LICENSE_FILES)
 
 
 def require(condition, message):
@@ -84,8 +90,15 @@ def tar_contents(data):
     return result
 
 
+def verify_licenses(contents, label):
+    for installed, source in LICENSE_FILES.items():
+        require(installed in contents, f"Missing license file in {label}: {installed}")
+        require(contents[installed][0] == (ROOT / source).read_bytes(), f"License file differs in {label}: {installed}")
+
+
 def verify_payload(contents, label):
     require(PAYLOAD <= contents.keys(), f"Missing {label} payload: {PAYLOAD - contents.keys()}")
+    verify_licenses(contents, label)
     binary, mode = contents["usr/bin/open-meteo"]
     require(binary.startswith(b"\x7fELF") and mode & 0o111, f"Missing executable ELF in {label}")
     desktop = contents[f"usr/share/applications/{APP_ID}.desktop"][0].decode()
@@ -127,8 +140,8 @@ def verify_artifacts(directory, files, version):
     code_signature = executable_sections(deb_contents["usr/bin/open-meteo"][0])
 
     rpm = str(directory / files["rpm"])
-    fields = run("rpm", "-qp", "--qf", "%{NAME}\n%{VERSION}\n%{ARCH}\n%{URL}\n", rpm).decode().splitlines()
-    require(fields == ["open-meteo", version, "x86_64", REPOSITORY], "RPM identity/version mismatch")
+    fields = run("rpm", "-qp", "--qf", "%{NAME}\n%{VERSION}\n%{ARCH}\n%{URL}\n%{LICENSE}\n", rpm).decode().splitlines()
+    require(fields == ["open-meteo", version, "x86_64", REPOSITORY, "GPL-3.0-only"], "RPM identity/version/license mismatch")
     names = {name.lstrip("/") for name in run("rpm", "-qpl", rpm).decode().splitlines()}
     require(PAYLOAD <= names, "RPM payload is incomplete")
     requires = run("rpm", "-qp", "--requires", rpm).decode().splitlines()
@@ -137,6 +150,12 @@ def verify_artifacts(directory, files, version):
     payload = run("rpm2cpio", rpm)
     binary = subprocess.run(["cpio", "--extract", "--to-stdout", "./usr/bin/open-meteo"], input=payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True).stdout
     require(digest(binary) == binary_hash, "RPM executable differs from DEB")
+    rpm_licenses = {}
+    for name in LICENSE_FILES:
+        data = subprocess.run(["cpio", "--extract", "--to-stdout", f"./{name}"], input=payload,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True).stdout
+        rpm_licenses[name] = (data, 0o644)
+    verify_licenses(rpm_licenses, "RPM")
     for name in ("metadata.json", "extension.js", "stylesheet.css"):
         data = subprocess.run(["cpio", "--extract", "--to-stdout", f"./{EXTENSION}/{name}"], input=payload,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True).stdout
@@ -145,7 +164,7 @@ def verify_artifacts(directory, files, version):
     arch = tar_contents(run("zstd", "-dc", str(directory / files["arch"])))
     require(".PKGINFO" in arch, "Missing Arch package metadata")
     fields = arch[".PKGINFO"][0].decode().splitlines()
-    for field in ["pkgname = open-meteo", f"pkgver = {version}-1", "arch = x86_64", f"url = {REPOSITORY}", "depend = gtk4>=4.8", "depend = libadwaita>=1.2", "depend = ca-certificates", "depend = adwaita-icon-theme"]:
+    for field in ["pkgname = open-meteo", f"pkgver = {version}-1", "arch = x86_64", f"url = {REPOSITORY}", "license = GPL-3.0-only", "depend = gtk4>=4.8", "depend = libadwaita>=1.2", "depend = ca-certificates", "depend = adwaita-icon-theme"]:
         require(field in fields, f"Arch metadata missing {field}")
     require(verify_payload(arch, "Arch") == binary_hash, "Arch executable differs from DEB")
 
@@ -175,7 +194,8 @@ def verify_artifacts(directory, files, version):
     prefix = f"open-meteo-{version}/"
     required = {prefix + name for name in ["Cargo.toml", "Cargo.lock", "src/main.rs", "tests/ui_smoke.py", "tests/fixtures/forecast.json", "scripts/package.sh", "scripts/verify-packages.py", "packaging/arch/PKGBUILD", "packaging/rpm/open-meteo.spec", "Dockerfile", "Makefile", "README.md", ".github/workflows/test-ci.yml", ".github/workflows/release-ci.yml"]}
     require(required <= source.keys(), f"Source archive missing files: {required - source.keys()}")
-    for absolute in [ROOT / "src/gnome_setup.rs", ROOT / "tests/gnome_setup.py",
+    for absolute in [ROOT / "LICENSE", ROOT / "packaging/copyright", ROOT / "AGENTS.md",
+                     ROOT / "src/gnome_setup.rs", ROOT / "tests/gnome_setup.py",
                      ROOT / "src/tray.rs", ROOT / "tests/tray_panel.py", ROOT / "tests/tray_label.py", ROOT / "scripts/check-tray.sh",
                      ROOT / "tests/gnome_indicator.js", ROOT / "tests/gnome_appimage.js", ROOT / "scripts/check-gnome.sh",
                      *(p for p in (ROOT / "vendor/ksni").rglob("*") if p.is_file()),
@@ -185,8 +205,10 @@ def verify_artifacts(directory, files, version):
         require(source[prefix + str(path)][0] == (ROOT / path).read_bytes(), f"Source archive differs: {path}")
     require(all(name.startswith(prefix) for name in source), "Source archive must have a single versioned root")
     require(f'version = "{version}"' in source[prefix + "Cargo.toml"][0].decode().splitlines(), "Source version mismatch")
+    require('license = "GPL-3.0-only"' in source[prefix + "Cargo.toml"][0].decode().splitlines(), "Source license mismatch")
     recipe = (directory / files["recipe"]).read_text()
     require(f"pkgver={version}" in recipe.splitlines(), "PKGBUILD version mismatch")
+    require("license=('GPL-3.0-only')" in recipe.splitlines(), "PKGBUILD license mismatch")
     require(f"sha256sums=('{digest((directory / files['source']).read_bytes())}')" in recipe, "PKGBUILD source checksum mismatch")
     print(f"Verified DEB, RPM, Arch, AppImage, source and PKGBUILD for {version}; executable SHA-256 {binary_hash}")
 

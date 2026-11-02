@@ -132,7 +132,7 @@ pub fn build(app: &adw::Application, demo: bool) {
     menu.append_submenu(Some(&tr("Language (restart required)")), &languages);
     let general = gio::Menu::new();
     general.append(Some(&tr("GNOME clock setup")), Some("app.clock-setup"));
-    general.append(Some(&tr("About Open Meteo")), Some("app.about"));
+    general.append(Some(&tr("About")), Some("app.about"));
     general.append(Some(&tr("Quit")), Some("app.quit"));
     menu.append_section(None, &general);
     let menu_button = gtk::MenuButton::builder()
@@ -900,8 +900,10 @@ impl Ui {
         let about = adw::AboutWindow::builder().transient_for(&self.window).modal(true)
             .application_name("Open Meteo").application_icon("weather-few-clouds")
             .version(env!("CARGO_PKG_VERSION"))
+            .license_type(gtk::License::Gpl30Only)
+            .copyright("© 2026 Open Meteo contributors")
             .comments(format!("{}\n\n{}", tr("A native Linux weather app."), tr("Forecasts by Open-Meteo, location data by GeoNames. An independent client, not affiliated with the Open-Meteo service.")))
-            .website("https://open-meteo.com/").build();
+            .website("https://github.com/fossgap/open-meteo").build();
         about.add_link(
             &tr("Weather by Open-Meteo"),
             "https://open-meteo.com/en/terms",

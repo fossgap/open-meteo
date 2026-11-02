@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 description = "A native Linux weather app with hourly forecasts and a system tray"
+license = "GPL-3.0-only"
 repository = "https://github.com/fossgap/open-meteo"
 homepage = "https://github.com/fossgap/open-meteo"
 

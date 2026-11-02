@@ -97,10 +97,11 @@ proxy, with no live weather API dependency.
 
 ## License metadata
 
-The owner has not selected a source-code license. RPM records
-`LicenseRef-Not-Specified` and Arch records `custom`; no license from a neighboring
-FOSSGap repository is implicitly applied. Third-party libraries and weather data
-retain their own terms.
+The application is licensed `GPL-3.0-only`, recorded in Cargo, RPM, and Arch
+metadata. Every binary package includes the full license and ksni's Unlicense
+under `/usr/share/licenses/open-meteo/`, plus copyright information under
+`/usr/share/doc/open-meteo/`. The source archive includes both license texts.
+Third-party libraries and weather data retain their own terms.
 
 ## GNOME clock and translations
 

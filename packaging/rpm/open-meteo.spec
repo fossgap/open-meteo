@@ -3,7 +3,7 @@ Version: @VERSION@
 Release: 1%{?dist}
 Summary: Native Linux weather forecasts with system tray access
 URL: https://github.com/fossgap/open-meteo
-License: LicenseRef-Not-Specified
+License: GPL-3.0-only
 Source0: open-meteo.tar.gz
 Requires: gtk4 >= 4.8
 Requires: libadwaita >= 1.2
@@ -31,4 +31,6 @@ cp -a usr %{buildroot}/
 %{_datadir}/applications/io.github.open_meteo.OpenMeteo.desktop
 %{_datadir}/icons/hicolor/scalable/apps/io.github.open_meteo.OpenMeteo.svg
 %doc %{_datadir}/doc/open-meteo/README.md
+%doc %{_datadir}/doc/open-meteo/copyright
+%license %{_datadir}/licenses/open-meteo/
 %{_datadir}/gnome-shell/extensions/open-meteo-clock@fossgap.github.io/

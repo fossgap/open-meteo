@@ -65,7 +65,8 @@ six artifacts plus `SHA256SUMS`:
 
 `scripts/verify-packages.py` requires this exact inventory, verifies versions,
 architectures, dependency declarations, launcher/icon/docs payloads, and exact
-GNOME extension files. The source archive must contain all translation catalogs. Native
+GNOME extension files. License metadata and bundled license texts must match the
+source, including ksni's Unlicense. The source archive must contain all translation catalogs. Native
 package executables must match byte for byte. AppImage code, read-only data, and
 build ID must match the native binary; linuxdeploy changes its ELF runtime path.
 The verifier checks the AppImage's GTK libraries
@@ -115,8 +116,8 @@ A manual dispatch, including a dispatch on a tag, **never publishes**:
 gh workflow run release-ci.yml --repo fossgap/open-meteo --ref main
 ```
 
-No release has been published merely by adding these workflows. Badges and release
-downloads become available after the corresponding GitHub runs/publication.
+Release downloads become available after the tagged workflow passes every check
+and its publication job succeeds.
 
 ## Reproduce locally
 

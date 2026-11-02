@@ -28,6 +28,9 @@ install:
 	install -Dm644 resources/$(APP_ID).desktop "$(DESTDIR)$(PREFIX)/share/applications/$(APP_ID).desktop"
 	install -Dm644 resources/$(APP_ID).svg "$(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/$(APP_ID).svg"
 	install -Dm644 README.md "$(DESTDIR)$(PREFIX)/share/doc/open-meteo/README.md"
+	install -Dm644 packaging/copyright "$(DESTDIR)$(PREFIX)/share/doc/open-meteo/copyright"
+	install -Dm644 LICENSE "$(DESTDIR)$(PREFIX)/share/licenses/open-meteo/LICENSE"
+	install -Dm644 vendor/ksni/UNLICENSE "$(DESTDIR)$(PREFIX)/share/licenses/open-meteo/ksni-UNLICENSE"
 	for file in resources/gnome-extension/*; do install -Dm644 "$$file" "$(DESTDIR)$(PREFIX)/share/gnome-shell/extensions/open-meteo-clock@fossgap.github.io/$$(basename "$$file")"; done
 
 uninstall:
@@ -35,6 +38,7 @@ uninstall:
 	rm -f "$(DESTDIR)$(PREFIX)/share/applications/$(APP_ID).desktop"
 	rm -f "$(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/$(APP_ID).svg"
 	rm -f "$(DESTDIR)$(PREFIX)/share/doc/open-meteo/README.md"
+	rm -f "$(DESTDIR)$(PREFIX)/share/doc/open-meteo/copyright" "$(DESTDIR)$(PREFIX)/share/licenses/open-meteo/LICENSE" "$(DESTDIR)$(PREFIX)/share/licenses/open-meteo/ksni-UNLICENSE"
 	rm -f "$(DESTDIR)$(PREFIX)/share/gnome-shell/extensions/open-meteo-clock@fossgap.github.io/metadata.json" "$(DESTDIR)$(PREFIX)/share/gnome-shell/extensions/open-meteo-clock@fossgap.github.io/extension.js" "$(DESTDIR)$(PREFIX)/share/gnome-shell/extensions/open-meteo-clock@fossgap.github.io/stylesheet.css"
 
 deb rpm appimage arch arch-source:

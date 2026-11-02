@@ -76,6 +76,22 @@ class ReleaseIntegrity(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Missing test payload"):
             verify.verify_payload({}, "test")
 
+    def test_missing_or_changed_license_stops_release(self):
+        contents = {name: ((verify.ROOT / source).read_bytes(), 0o644)
+                    for name, source in verify.LICENSE_FILES.items()}
+        verify.verify_licenses(contents, "test")
+        for name in verify.LICENSE_FILES:
+            with self.subTest(name=name, problem="missing"):
+                incomplete = dict(contents)
+                del incomplete[name]
+                with self.assertRaisesRegex(ValueError, "Missing license file"):
+                    verify.verify_licenses(incomplete, "test")
+            with self.subTest(name=name, problem="changed"):
+                corrupted = dict(contents)
+                corrupted[name] = (b"Wrong license", 0o644)
+                with self.assertRaisesRegex(ValueError, "License file differs"):
+                    verify.verify_licenses(corrupted, "test")
+
     def test_elf_metadata_changes_preserve_code_signature(self):
         original = Path('/bin/true').read_bytes()
         binary = self.root / 'binary'

@@ -5,7 +5,7 @@ pkgrel=1
 pkgdesc='Native Linux weather forecasts with system tray access'
 url='https://github.com/fossgap/open-meteo'
 arch=('x86_64' 'aarch64')
-license=('custom') # The project owner has not selected a code license yet.
+license=('GPL-3.0-only')
 depends=('gtk4>=4.8' 'libadwaita>=1.2' 'ca-certificates' 'adwaita-icon-theme')
 makedepends=('rust' 'pkgconf')
 source=("$pkgname-$pkgver.tar.gz")

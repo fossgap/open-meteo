@@ -27,7 +27,7 @@ if [ "$package_format" = arch-source ]; then
   mkdir -p "$archive_dir"
   tar --exclude='__pycache__' --exclude='*.pyc' --transform "s,^,open-meteo-$package_version/," \
     -czf "$archive_dir/open-meteo-$package_version.tar.gz" \
-    Cargo.toml Cargo.lock src tests resources docs scripts packaging vendor Makefile README.md \
+    Cargo.toml Cargo.lock src tests resources docs scripts packaging vendor Makefile README.md LICENSE AGENTS.md \
     Dockerfile .dockerignore .gitignore .github
   sed "s/^pkgver=.*/pkgver=$package_version/" packaging/arch/PKGBUILD > "$archive_dir/PKGBUILD"
   source_hash=$(sha256sum "$archive_dir/open-meteo-$package_version.tar.gz" | cut -d ' ' -f 1)
@@ -51,6 +51,9 @@ install -Dm755 "$binary" "$stage_dir/usr/bin/open-meteo"
 install -Dm644 "resources/$app_id.desktop" "$stage_dir/usr/share/applications/$app_id.desktop"
 install -Dm644 "resources/$app_id.svg" "$stage_dir/usr/share/icons/hicolor/scalable/apps/$app_id.svg"
 install -Dm644 README.md "$stage_dir/usr/share/doc/open-meteo/README.md"
+install -Dm644 packaging/copyright "$stage_dir/usr/share/doc/open-meteo/copyright"
+install -Dm644 LICENSE "$stage_dir/usr/share/licenses/open-meteo/LICENSE"
+install -Dm644 vendor/ksni/UNLICENSE "$stage_dir/usr/share/licenses/open-meteo/ksni-UNLICENSE"
 for extension_file in resources/gnome-extension/*; do
   install -Dm644 "$extension_file" "$stage_dir/usr/share/gnome-shell/extensions/open-meteo-clock@fossgap.github.io/$(basename "$extension_file")"
 done
@@ -107,7 +110,7 @@ builddate = ${SOURCE_DATE_EPOCH:-$(date +%s)}
 packager = FOSSGap Open Meteo contributors
 size = $(du -sb "$stage_dir/usr" | cut -f1)
 arch = $machine_arch
-license = custom
+license = GPL-3.0-only
 depend = glibc
 depend = gtk4>=4.8
 depend = libadwaita>=1.2

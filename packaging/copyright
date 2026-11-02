@@ -1,0 +1,15 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Open Meteo
+Source: https://github.com/fossgap/open-meteo
+
+Files: *
+Copyright: 2026 Open Meteo contributors
+License: GPL-3.0-only
+ The full license is installed at /usr/share/licenses/open-meteo/LICENSE
+ and included as LICENSE in the source distribution.
+
+Files: vendor/ksni/*
+Copyright: Dedicated to the public domain by the ksni contributors
+License: Unlicense
+ The full license is installed at /usr/share/licenses/open-meteo/ksni-UNLICENSE
+ and included as vendor/ksni/UNLICENSE in the source distribution.
