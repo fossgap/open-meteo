@@ -12,6 +12,7 @@ pub struct Preferences {
     pub recent: Vec<Location>,
     pub units: Units,
     pub keep_in_tray: bool,
+    pub language: String,
 }
 
 impl Default for Preferences {
@@ -21,6 +22,7 @@ impl Default for Preferences {
             recent: vec![],
             units: Units::Celsius,
             keep_in_tray: true,
+            language: "system".into(),
         }
     }
 }
@@ -82,8 +84,12 @@ impl Store {
             .config
             .as_ref()
             .ok_or("No configuration directory is available.")?;
-        write_json(&dir.join("settings.json"), prefs)
-            .map_err(|e| format!("Couldn’t save your preferences: {e}"))
+        write_json(&dir.join("settings.json"), prefs).map_err(|e| {
+            crate::i18n::tf(
+                "Couldn’t save your preferences: {error}",
+                &[("error", &e.to_string())],
+            )
+        })
     }
 
     pub fn forecast(&self, location: &Location) -> Option<SavedForecast> {
@@ -105,8 +111,12 @@ impl Store {
             .cache
             .as_ref()
             .ok_or("No cache directory is available.")?;
-        write_json(&dir.join(format!("{}.json", saved.location.key())), saved)
-            .map_err(|e| format!("Couldn’t save the offline forecast: {e}"))
+        write_json(&dir.join(format!("{}.json", saved.location.key())), saved).map_err(|e| {
+            crate::i18n::tf(
+                "Couldn’t save the offline forecast: {error}",
+                &[("error", &e.to_string())],
+            )
+        })
     }
 }
 

@@ -113,7 +113,12 @@ def text_present(text):
 
 
 def click(name):
-    node = wait_for(lambda: find(name), f"control {name}")
+    node = wait_for(lambda: next((n for n in nodes() if n.get_name() == name and n.get_n_actions() > 0), None) or find(name), f"control {name}")
+    if node.get_n_actions() == 0:
+        rectangle = node.get_extents(Atspi.CoordType.SCREEN)
+        xdo("mousemove", rectangle.x + rectangle.width // 2, rectangle.y + rectangle.height // 2)
+        xdo("click", 1)
+        return
     assert node.do_action(0), f"Could not activate {name}"
 
 
@@ -122,6 +127,7 @@ def xdo(*args):
 
 
 def capture(name, window, output):
+    xdo("windowmove", window, 0, 0)
     xdo("mousemove", 0, 0)
     time.sleep(0.4)
     geometry = dict(line.split("=", 1) for line in xdo("getwindowgeometry", "--shell", window).splitlines())
@@ -149,7 +155,7 @@ def run_checks():
         env.update({"XDG_CONFIG_HOME": str(temp / "config"), "XDG_CACHE_HOME": str(temp / "cache"),
                     "GDK_BACKEND": "x11", "GSK_RENDERER": "cairo", "GIO_USE_VFS": "local", "GTK_A11Y": "atspi",
                     "HTTPS_PROXY": "http://127.0.0.1:9", "HTTP_PROXY": "http://127.0.0.1:9",
-                    "ALL_PROXY": "http://127.0.0.1:9", "NO_PROXY": ""})
+                    "ALL_PROXY": "http://127.0.0.1:9", "NO_PROXY": "", "LC_ALL": "C.UTF-8", "LANGUAGE": "en"})
         # GTK_THEME is a debugging override that disables libadwaita's styling.
         env.pop("GTK_THEME", None)
         helper = subprocess.Popen([sys.executable, __file__, "--services"], env=env)
@@ -212,6 +218,14 @@ def run_checks():
             path = "/" + path
             title = call(service, path, "org.freedesktop.DBus.Properties", "Get", GLib.Variant("(ss)", ("org.kde.StatusNotifierItem", "Title"))).unpack()[0]
             assert "Paris" in title and "21°" in title and "sample" in title, title
+            def tray_property(name):
+                return call(service, path, "org.freedesktop.DBus.Properties", "Get", GLib.Variant("(ss)", ("org.kde.StatusNotifierItem", name))).unpack()[0]
+            assert tray_property("IconName") == "", "Host must render the temperature pixmap"
+            pixmaps = tray_property("IconPixmap")
+            assert len(pixmaps) == 4 and all(len(pixels) == width * height * 4 for width, height, pixels in pixmaps), "Missing temperature pixmaps"
+            click("°F")
+            wait_for(lambda: tray_property("IconPixmap") != pixmaps, "temperature icon changes with units")
+            click("°C")
             menu_path = call(service, path, "org.freedesktop.DBus.Properties", "Get", GLib.Variant("(ss)", ("org.kde.StatusNotifierItem", "Menu"))).unpack()[0]
             layout = call(service, menu_path, "com.canonical.dbusmenu", "GetLayout", GLib.Variant("(iias)", (0, -1, []))).unpack()
             assert "Next 7 days" in str(layout) and "Next hours" in str(layout), layout
@@ -222,6 +236,29 @@ def run_checks():
             click("Close")
             setting("RemoveTray")
             wait_for(lambda: "IsViewable" in subprocess.check_output(["xwininfo", "-id", window], text=True), "tray loss restores the hidden window")
+            # The GNOME clock keeps the app reachable without an SNI host.
+            bridge_service = "io.github.open_meteo.OpenMeteo.Demo"
+            bridge_path = "/io/github/open_meteo/OpenMeteo/Weather"
+            bridge_interface = "io.github.open_meteo.OpenMeteo.Weather1"
+            def bridge(method):
+                return call(bridge_service, bridge_path, bridge_interface, method)
+            snapshot = json.loads(bridge("Attach").unpack()[0])
+            assert snapshot["temperature"] == "21°C" and snapshot["location"] == "Paris"
+            click("Close")
+            wait_for(lambda: "IsUnMapped" in subprocess.check_output(["xwininfo", "-id", window], text=True), "close to GNOME clock")
+            bridge("Show")
+            wait_for(lambda: "IsViewable" in subprocess.check_output(["xwininfo", "-id", window], text=True), "GNOME forecast action")
+            click("Close")
+            bridge("Detach")
+            wait_for(lambda: "IsViewable" in subprocess.check_output(["xwininfo", "-id", window], text=True), "extension disable restores hidden window")
+            # A vanished consumer must release its lease without calling Detach.
+            peer = Gio.DBusConnection.new_for_address_sync(os.environ["DBUS_SESSION_BUS_ADDRESS"],
+                Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
+            peer.call_sync(bridge_service, bridge_path, bridge_interface, "Attach", None, None, Gio.DBusCallFlags.NONE, 3000, None)
+            click("Close")
+            wait_for(lambda: "IsUnMapped" in subprocess.check_output(["xwininfo", "-id", window], text=True), "close with independent clock peer")
+            peer.close_sync(None)
+            wait_for(lambda: "IsViewable" in subprocess.check_output(["xwininfo", "-id", window], text=True), "clock crash restores hidden window")
             click("Close")
             app.wait(timeout=5)
             assert app.returncode == 0, app.returncode
@@ -255,9 +292,62 @@ def run_checks():
             xdo("key", "--window", window, "ctrl+l")
             xdo("type", "--window", window, "London")
             wait_for(lambda: find("Couldn’t connect. Check your internet connection and try again."), "search connection failure")
-            xdo("key", "--window", window, "Escape")
+            xdo("key", "Escape")
+            wait_for(lambda: not find("Find a location"), "search popover closes")
+            click("Main menu")
+            capture("main-menu", window, output)
+            # GTK 4.24 can omit names on native GMenu items. Their semantic
+            # menu/radio roles and order remain available to accessibility.
+            language_menu = wait_for(lambda: find("Language (restart required)") or next(
+                (n for n in nodes() if n.get_role_name() == "menu item"), None), "language submenu")
+            assert language_menu.do_action(0)
+            def german_option():
+                named = find("Deutsch")
+                radios = [n for n in nodes() if n.get_role_name() == "radio menu item"]
+                return named or (radios[3] if len(radios) == 8 else None)
+            german = wait_for(german_option, "German language option")
+            capture("language-menu", window, output)
+            assert german.do_action(0)
+            wait_for(lambda: json.loads((config / "settings.json").read_text())["language"] == "de", "language selection saved")
+            # GTK 4.8 can retain a popover keyboard grab without a window
+            # manager. Invoke the same exported Quit action for this restart.
+            call("io.github.open_meteo.OpenMeteo", "/io/github/open_meteo/OpenMeteo",
+                 "org.gtk.Actions", "Activate", GLib.Variant("(sava{sv})", ("quit", [], {})))
+            app.wait(timeout=5)
+            # Real translated controls, scripts, RTL direction and narrow layouts.
+            for language in ("fr", "de", "es", "zh", "hi", "ar"):
+                messages = json.loads((ROOT / f"resources/locales/{language}.json").read_text())
+                app = subprocess.Popen([str(BINARY), "--demo"], env=env | {"LANGUAGE": language}, stdout=log, stderr=log)
+                wait_for(lambda: find(messages["Next 24 hours"]), f"{language} hourly heading")
+                assert find(messages["Next 7 days"]), f"{language} daily heading"
+                state = json.loads(bridge("GetSnapshot").unpack()[0])
+                assert state["language"] == language and state["rtl"] == (language == "ar"), state
+                assert state["temperature"] == ("٢١°C" if language == "ar" else "21°C"), state
+                window = xdo("search", "--name", "^Open Meteo$").splitlines()[0]
+                xdo("windowsize", window, 960, 960)
+                capture(f"language-{language}", window, output)
+                # Leave room for native titlebars and distro font metrics.
+                compact_width = 420
+                xdo("windowsize", window, compact_width, 960)
+                capture(f"language-{language}-narrow", window, output)
+                width = dict(line.split("=", 1) for line in xdo("getwindowgeometry", "--shell", window).splitlines())["WIDTH"]
+                assert int(width) == compact_width, f"{language} expands narrow window to {width}px"
+                current_hour = find(messages["Now"]).get_extents(Atspi.CoordType.SCREEN)
+                assert 0 <= current_hour.x < compact_width, f"{language} hourly strip must start at the current hour"
+                xdo("windowfocus", window)
+                xdo("key", "ctrl+q")
+                app.wait(timeout=5)
+            # Saved language takes precedence over the desktop locale on restart.
+            app = subprocess.Popen([str(BINARY)], env=env | {"LANGUAGE": "fr"}, stdout=log, stderr=log)
+            wait_for(lambda: text_present("Gespeicherte Wetterdaten werden angezeigt."), "German saved language and translated offline error")
+            xdo("windowfocus", xdo("search", "--name", "^Open Meteo$").splitlines()[0])
             xdo("key", "ctrl+q")
             app.wait(timeout=5)
+            # The AppImage and native binary carry an identical installable extension.
+            extension_data = temp / "extension-data"
+            subprocess.run([str(BINARY), "--install-gnome-extension"], env=env | {"XDG_DATA_HOME": str(extension_data)}, check=True, stdout=log, stderr=log)
+            for file in (ROOT / "resources/gnome-extension").iterdir():
+                assert (extension_data / "gnome-shell/extensions/open-meteo-clock@fossgap.github.io" / file.name).read_bytes() == file.read_bytes()
             log.flush()
             log_text = (output / "ui-smoke.log").read_text()
             for failure in ["panicked at", "CRITICAL", "Failed to load icon", "Failed to load module:", "Unrecognized image file format"]:

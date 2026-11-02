@@ -31,3 +31,4 @@ cp -a usr %{buildroot}/
 %{_datadir}/applications/io.github.open_meteo.OpenMeteo.desktop
 %{_datadir}/icons/hicolor/scalable/apps/io.github.open_meteo.OpenMeteo.svg
 %doc %{_datadir}/doc/open-meteo/README.md
+%{_datadir}/gnome-shell/extensions/open-meteo-clock@fossgap.github.io/

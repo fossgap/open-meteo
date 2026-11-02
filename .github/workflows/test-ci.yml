@@ -14,6 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gnome-clock:
+    uses: ./.github/workflows/gnome-ci.yml
   test:
     runs-on: ubuntu-24.04
     timeout-minutes: 45

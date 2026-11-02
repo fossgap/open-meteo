@@ -1,0 +1,40 @@
+name: GNOME Clock CI
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gnome-clock:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build isolated GNOME 50 test environment
+        run: docker build -f tests/gnome.Dockerfile -t open-meteo-gnome .
+      - name: Test weather inside the system clock
+        run: |
+          docker create --name meteo-gnome --tmpfs /tmp:rw,exec --shm-size=1g open-meteo-gnome
+          docker start -a meteo-gnome
+          test "$(docker inspect --format '{{.State.ExitCode}}' meteo-gnome)" -eq 0
+      - name: Collect GNOME evidence
+        if: always()
+        run: |
+          mkdir -p target/gnome-evidence
+          docker logs meteo-gnome > target/gnome-evidence/shell.log 2>&1 || true
+          docker cp meteo-gnome:/workspace/target/ci/gnome-clock.png target/gnome-evidence/ || true
+          docker rm -f meteo-gnome || true
+      - name: Retain clock screenshot and logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gnome-clock-evidence
+          path: target/gnome-evidence/
+          if-no-files-found: warn
+          retention-days: 14

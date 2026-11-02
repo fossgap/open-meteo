@@ -23,7 +23,7 @@ A [FOSSGap](https://github.com/fossgap) project and independent desktop client; 
 
 [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Building from source](#building-from-source) · [CI and releases](docs/ci-release.md)
 
-![Open Meteo showing its current weather, hourly forecast, and seven-day outlook with labelled sample data](docs/preview.png)
+![Open Meteo showing the Paris weather forecast in its normal interface](docs/preview.png)
 
 ## Features
 
@@ -34,13 +34,17 @@ A [FOSSGap](https://github.com/fossgap) project and independent desktop client; 
   details, including sunrise, sunset, and maximum wind.
 - **Location search:** cities and postal codes, with the five most recent places
   remembered. Your location is never detected automatically.
-- **System tray:** current conditions in the tooltip and menu, quick hourly and
-  weekly forecasts, refresh, open, and quit actions.
+- **Temperature in the panel:** a temperature icon on StatusNotifier desktops,
+  with hourly and weekly forecasts, refresh, open, and quit actions.
+- **GNOME clock:** the bundled Open Meteo Clock extension places the weather icon
+  and temperature beside the system clock, with forecast actions in its menu.
 - **Offline support:** the last successful forecast for each location is saved.
   Saved data is labelled with its timestamp; expired hours and days are omitted.
 - **Desktop integration:** follows the desktop's light/dark preference, adapts to
   narrow windows, and supports keyboard navigation.
 - **Units:** switch between Celsius / km/h and Fahrenheit / mph instantly.
+- **Languages:** English, French, German, Spanish, Simplified Chinese, Hindi, and
+  Arabic, including right-to-left layout and localized dates and numbers.
 
 Forecasts refresh every 15 minutes while the app is running. Network requests run
 on background threads so the window remains usable.
@@ -57,7 +61,8 @@ for published artifacts, or [build and verify packages locally](docs/packaging.m
 - A Linux graphical session; native packages require GTK 4.8+ and libadwaita 1.2+.
 - Release builds use Debian 12's glibc 2.36 baseline.
 - An internet connection for location search and fresh forecasts; saved weather works offline.
-- A StatusNotifier/AppIndicator host for tray integration. GNOME may need an extension.
+- A StatusNotifier/AppIndicator host, or the bundled GNOME Clock extension, for panel integration.
+- Fonts for your chosen language; Noto provides Chinese, Hindi, and Arabic coverage.
 
 Native package managers resolve the declared libraries. The AppImage bundles
 GTK and libadwaita; it uses the host's glibc and display/session services.
@@ -106,11 +111,59 @@ app in the tray by default. Click the icon to reopen the forecast, or open its m
 for a quick outlook. Turn off **Keep running in system tray** in the main menu to
 quit when the window closes. **Quit** always exits the app.
 
-GNOME Shell needs an AppIndicator/StatusNotifier extension for tray icons. If no
-host is available, closing quits normally. If the tray disappears while the
-window is hidden, the window is restored automatically. Tray presentation and
-click behavior depend on the desktop; the temperature is in the tooltip/menu,
-not a separate panel text widget.
+The tray icon itself displays the temperature; its tooltip includes the location,
+condition, unit, and whether the forecast is saved. If neither a tray nor the
+GNOME clock extension is available, closing quits normally. If the last panel
+connection disappears while the window is hidden, the window reopens.
+
+### GNOME system clock
+
+Open **Main menu → GNOME clock setup → Install extension**, or run:
+
+```sh
+open-meteo --install-gnome-extension
+# For an AppImage, use its filename instead:
+# ./Open_Meteo-0.1.0-x86_64.AppImage --install-gnome-extension
+```
+
+Log out and back in after the first installation, then enable **Open Meteo Clock**
+in GNOME Extensions, or run:
+
+```sh
+gnome-extensions enable open-meteo-clock@fossgap.github.io
+```
+
+Launch Open Meteo and select a location. The extension shows the weather directly
+beside the existing clock, as in the reference layout. Click the clock to find
+**Open forecast** and **Refresh** below the calendar. Closing the app window keeps
+it running when the panel preference is enabled; **Quit** removes the indicator.
+The extension does not launch the app automatically.
+
+The extension targets GNOME Shell 45–50; automated Shell integration tests run on
+GNOME 50. It shares the app's forecast over the session bus and makes no additional
+weather requests. A `~` before the temperature marks saved weather. While the clock
+extension is connected, the ordinary tray item becomes passive to avoid duplication.
+Native packages also install the extension under `/usr/share/gnome-shell/extensions`.
+The user installer works with every package format and source builds.
+
+To disable the clock integration:
+
+```sh
+gnome-extensions disable open-meteo-clock@fossgap.github.io
+```
+
+### Language
+
+The app follows `LANGUAGE`, then the desktop's `LC_ALL` / `LC_MESSAGES` / `LANG`
+locale, with English as fallback. Choose **Main menu → Language (restart required)**
+to override it, then quit and reopen the app. Available languages are English,
+Français, Deutsch, Español, 简体中文, हिन्दी, and العربية. Forecast dates use the
+Gregorian calendar and the selected location's time zone. Search requests ask for
+place names in the selected language; the provider may return native or English names.
+
+Translations are embedded in the binary. To contribute, edit the UTF-8 catalogs in
+[`resources/locales`](resources/locales), preserving named fields such as
+`{temperature}`. Tests check catalog completeness and matching fields.
 
 | Shortcut | Action |
 | --- | --- |
@@ -197,7 +250,7 @@ address.
 
 | File | Purpose |
 | --- | --- |
-| `$XDG_CONFIG_HOME/open-meteo/settings.json` | Location, recent places, units, and tray preference |
+| `$XDG_CONFIG_HOME/open-meteo/settings.json` | Location, recent places, units, language, and panel preference |
 | `$XDG_CACHE_HOME/open-meteo/<latitude>_<longitude>.json` | Last successful forecast for a location |
 
 The defaults are `~/.config` and `~/.cache`. Settings are written atomically;

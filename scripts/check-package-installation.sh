@@ -31,6 +31,7 @@ container=$(docker create --tmpfs /tmp:rw,exec --shm-size=1g \
     --volume "$artifacts:/artifacts:ro" \
     --volume "$PWD/scripts:/workspace/scripts:ro" \
     --volume "$PWD/tests:/workspace/tests:ro" \
+    --volume "$PWD/resources:/workspace/resources:ro" \
     --volume "$results_dir:/results" \
     "$image" sh /workspace/tests/package-install/install.sh "$format" "$version")
 trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT HUP INT TERM

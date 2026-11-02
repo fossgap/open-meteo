@@ -31,6 +31,7 @@ window.meteo { background: @meteo_ground; color: @meteo_ink; }
 .low-temperature { color: @meteo_muted; }
 .high-temperature { font-weight: 600; }
 .day-details { padding: 4px 8px 14px 20px; color: @meteo_muted; font-size: 12px; }
+.day-details:dir(rtl) { padding: 4px 20px 14px 8px; }
 .daylight { padding: 16px 0; }
 .footer { margin-top: 24px; }
 .footer label, .footer link { font-size: 12px; }

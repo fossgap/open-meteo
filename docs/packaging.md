@@ -101,3 +101,16 @@ The owner has not selected a source-code license. RPM records
 `LicenseRef-Not-Specified` and Arch records `custom`; no license from a neighboring
 FOSSGap repository is implicitly applied. Third-party libraries and weather data
 retain their own terms.
+
+## GNOME clock and translations
+
+Every native package includes `open-meteo-clock@fossgap.github.io` in
+`/usr/share/gnome-shell/extensions`. The application also embeds the extension, so
+`open-meteo --install-gnome-extension` works for AppImages and user/source installs.
+Installation does not enable the extension or change desktop settings. Follow the
+[GNOME setup instructions](../README.md#gnome-system-clock) to enable it.
+
+The seven UTF-8 translation catalogs are embedded at compile time; packages need
+no external locale files or gettext compilation step. The UI uses the desktop's
+fonts. Install suitable fonts for Chinese and Devanagari if your system lacks them
+(for example, `fonts-noto-core fonts-noto-cjk` on Debian/Ubuntu).

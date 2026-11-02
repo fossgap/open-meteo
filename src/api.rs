@@ -35,7 +35,7 @@ impl WeatherClient {
             .query(&[
                 ("name", name.trim()),
                 ("count", "8"),
-                ("language", "en"),
+                ("language", crate::i18n::code()),
                 ("format", "json"),
             ])
             .send()

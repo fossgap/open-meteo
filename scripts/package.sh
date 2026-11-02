@@ -51,6 +51,9 @@ install -Dm755 "$binary" "$stage_dir/usr/bin/open-meteo"
 install -Dm644 "resources/$app_id.desktop" "$stage_dir/usr/share/applications/$app_id.desktop"
 install -Dm644 "resources/$app_id.svg" "$stage_dir/usr/share/icons/hicolor/scalable/apps/$app_id.svg"
 install -Dm644 README.md "$stage_dir/usr/share/doc/open-meteo/README.md"
+for extension_file in resources/gnome-extension/*; do
+  install -Dm644 "$extension_file" "$stage_dir/usr/share/gnome-shell/extensions/open-meteo-clock@fossgap.github.io/$(basename "$extension_file")"
+done
 
 case "$package_format" in
   deb)

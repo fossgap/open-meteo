@@ -1,6 +1,7 @@
 use crate::{
     api::WeatherClient,
     components::{self, clear, label},
+    i18n::{self, tf, tr},
     model::{Forecast, Location, Units},
     storage::{Preferences, SavedForecast, Store},
     tray::{self, Command, TrayEvent, WeatherTray},
@@ -8,7 +9,7 @@ use crate::{
 use adw::prelude::*;
 use gtk::{Orientation, gio, glib};
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     rc::Rc,
     sync::{
         Arc,
@@ -62,9 +63,16 @@ struct Ui {
     sender: mpsc::Sender<Event>,
     online: Arc<AtomicBool>,
     demo: bool,
+    clock_online: Cell<bool>,
+    desktop: RefCell<Option<crate::desktop::Desktop>>,
 }
 
 pub fn build(app: &adw::Application, demo: bool) {
+    gtk::Widget::set_default_direction(if i18n::rtl() {
+        gtk::TextDirection::Rtl
+    } else {
+        gtk::TextDirection::Ltr
+    });
     install_style();
     let store = Store::new();
     let loaded = if demo {
@@ -89,12 +97,12 @@ pub fn build(app: &adw::Application, demo: bool) {
     header.set_title_widget(Some(&adw::WindowTitle::new("Open Meteo", "")));
     let search_button = gtk::MenuButton::builder()
         .icon_name("system-search-symbolic")
-        .tooltip_text("Search locations (Ctrl+L)")
+        .tooltip_text(tr("Search locations (Ctrl+L)"))
         .build();
     header.pack_start(&search_button);
     let refresh_button = gtk::Button::builder()
         .icon_name("view-refresh-symbolic")
-        .tooltip_text("Refresh weather (Ctrl+R)")
+        .tooltip_text(tr("Refresh weather (Ctrl+R)"))
         .build();
     refresh_button.add_css_class("flat");
     header.pack_start(&refresh_button);
@@ -103,9 +111,9 @@ pub fn build(app: &adw::Application, demo: bool) {
     units.add_css_class("linked");
     units.add_css_class("unit-toggle");
     let celsius = gtk::ToggleButton::with_label("°C");
-    celsius.set_tooltip_text(Some("Celsius and kilometres per hour"));
+    celsius.set_tooltip_text(Some(&tr("Celsius and kilometres per hour")));
     let fahrenheit = gtk::ToggleButton::with_label("°F");
-    fahrenheit.set_tooltip_text(Some("Fahrenheit and miles per hour"));
+    fahrenheit.set_tooltip_text(Some(&tr("Fahrenheit and miles per hour")));
     fahrenheit.set_group(Some(&celsius));
     celsius.set_active(prefs.units == Units::Celsius);
     fahrenheit.set_active(prefs.units == Units::Fahrenheit);
@@ -113,18 +121,26 @@ pub fn build(app: &adw::Application, demo: bool) {
     units.append(&fahrenheit);
     let menu = gio::Menu::new();
     menu.append(
-        Some("Keep running in system tray"),
+        Some(&tr("Keep running in system tray")),
         Some("app.keep-in-tray"),
     );
+    let languages = gio::Menu::new();
+    languages.append(Some(&tr("System language")), Some("app.language::system"));
+    for (code, name) in i18n::LANGUAGES {
+        languages.append(Some(name), Some(&format!("app.language::{code}")));
+    }
+    menu.append_submenu(Some(&tr("Language (restart required)")), &languages);
     let general = gio::Menu::new();
-    general.append(Some("About Open Meteo"), Some("app.about"));
-    general.append(Some("Quit"), Some("app.quit"));
+    general.append(Some(&tr("GNOME clock setup")), Some("app.clock-setup"));
+    general.append(Some(&tr("About Open Meteo")), Some("app.about"));
+    general.append(Some(&tr("Quit")), Some("app.quit"));
     menu.append_section(None, &general);
     let menu_button = gtk::MenuButton::builder()
         .icon_name("open-menu-symbolic")
-        .tooltip_text("Main menu")
+        .tooltip_text(tr("Main menu"))
         .menu_model(&menu)
         .build();
+    menu_button.update_property(&[gtk::accessible::Property::Label(&tr("Main menu"))]);
     header.pack_end(&menu_button);
     header.pack_end(&units);
     root.append(&header);
@@ -135,7 +151,7 @@ pub fn build(app: &adw::Application, demo: bool) {
     notice_text.set_wrap(true);
     notice_text.set_hexpand(true);
     notice.append(&notice_text);
-    let retry = gtk::Button::with_label("Retry");
+    let retry = gtk::Button::with_label(&tr("Retry"));
     retry.set_valign(gtk::Align::Center);
     notice.append(&retry);
     notice.set_visible(false);
@@ -161,9 +177,9 @@ pub fn build(app: &adw::Application, demo: bool) {
     let search_content = gtk::Box::new(Orientation::Vertical, 8);
     search_content.add_css_class("search-content");
     search_content.set_width_request(300);
-    search_content.append(&label("Find a location", "heading"));
+    search_content.append(&label(&tr("Find a location"), "heading"));
     let search_entry = gtk::SearchEntry::builder()
-        .placeholder_text("City or postal code")
+        .placeholder_text(tr("City or postal code"))
         .max_width_chars(32)
         .build();
     search_entry.set_search_delay(350);
@@ -199,7 +215,7 @@ pub fn build(app: &adw::Application, demo: bool) {
         search_button,
         search_entry,
         search_results,
-        tray_status: label("Checking system tray…", "section-caption"),
+        tray_status: label(&tr("Checking system tray…"), "section-caption"),
         tray_action,
         state: RefCell::new(State {
             prefs,
@@ -217,8 +233,72 @@ pub fn build(app: &adw::Application, demo: bool) {
         sender,
         online,
         demo,
+        clock_online: Cell::new(false),
+        desktop: RefCell::new(None),
     });
 
+    if let Some(connection) = app.dbus_connection() {
+        let command_ui = Rc::downgrade(&ui);
+        let available_ui = Rc::downgrade(&ui);
+        match crate::desktop::Desktop::new(
+            connection,
+            move |command| {
+                if let Some(ui) = command_ui.upgrade() {
+                    ui.receive_tray(TrayEvent::Command(command));
+                }
+            },
+            move |online| {
+                if let Some(ui) = available_ui.upgrade() {
+                    ui.clock_online.set(online);
+                    if !online && !ui.online.load(Ordering::Relaxed) && !ui.window.is_visible() {
+                        ui.window.present();
+                    }
+                    ui.update_tray();
+                    ui.update_tray_status();
+                }
+            },
+        ) {
+            Ok(desktop) => *ui.desktop.borrow_mut() = Some(desktop),
+            Err(error) => eprintln!("GNOME clock connection: {error}"),
+        }
+    }
+    let language_action = gio::SimpleAction::new_stateful(
+        "language",
+        Some(glib::VariantTy::STRING),
+        &ui.state.borrow().prefs.language.to_variant(),
+    );
+    let this = ui.clone();
+    language_action.connect_activate(move |action, parameter| {
+        let Some(value) = parameter.and_then(|p| p.str()) else {
+            return;
+        };
+        if value != "system" && !i18n::LANGUAGES.iter().any(|(code, _)| *code == value) {
+            return;
+        }
+        this.state.borrow_mut().prefs.language = value.into();
+        action.set_state(&value.to_variant());
+        this.persist();
+        this.toast("Language saved. Quit and reopen Open Meteo to apply it.");
+    });
+    app.add_action(&language_action);
+    let setup = gio::SimpleAction::new("clock-setup", None);
+    let this = ui.clone();
+    setup.connect_activate(move |_, _| {
+        let dialog = adw::MessageDialog::new(Some(&this.window), Some(&tr("GNOME clock setup")),
+            Some(&tr("Install the bundled Open Meteo Clock extension, then enable it in GNOME Extensions. See the README for installation commands. The app must be running to show the temperature.")));
+        dialog.add_response("close", &tr("Close"));
+        dialog.add_response("install", &tr("Install extension"));
+        dialog.set_response_appearance("install", adw::ResponseAppearance::Suggested);
+        let ui = this.clone();
+        dialog.connect_response(Some("install"), move |_, _| {
+            match crate::desktop::install_extension() {
+                Ok(_) => ui.toast("Extension installed. Log out and back in, then enable Open Meteo Clock in GNOME Extensions."),
+                Err(error) => ui.toast(&tf("Could not install the extension: {error}", &[("error", &error.to_string())])),
+            }
+        });
+        dialog.present();
+    });
+    app.add_action(&setup);
     let this = ui.clone();
     ui.refresh_button.connect_clicked(move |_| this.refresh());
     let this = ui.clone();
@@ -272,7 +352,10 @@ pub fn build(app: &adw::Application, demo: bool) {
     let this = ui.clone();
     ui.window.connect_close_request(move |window| {
         let state = this.state.borrow();
-        if state.prefs.keep_in_tray && state.tray.is_some() && this.online.load(Ordering::Relaxed) {
+        if state.prefs.keep_in_tray
+            && (this.clock_online.get()
+                || (state.tray.is_some() && this.online.load(Ordering::Relaxed)))
+        {
             window.set_visible(false);
             glib::Propagation::Stop
         } else {
@@ -321,6 +404,7 @@ pub fn build(app: &adw::Application, demo: bool) {
     });
     let this = ui.clone();
     app.connect_shutdown(move |_| {
+        this.desktop.borrow_mut().take();
         if let Some(handle) = this.state.borrow_mut().tray.take() {
             handle.shutdown();
         }
@@ -343,7 +427,7 @@ pub fn build(app: &adw::Application, demo: bool) {
 impl Ui {
     fn toast(&self, message: &str) {
         eprintln!("{message}");
-        self.overlay.add_toast(adw::Toast::new(message));
+        self.overlay.add_toast(adw::Toast::new(&tr(message)));
     }
 
     fn persist(&self) {
@@ -450,7 +534,7 @@ impl Ui {
 
     fn search_message(&self, message: &str) {
         clear(&self.search_results);
-        let hint = label(message, "search-hint");
+        let hint = label(&tr(message), "search-hint");
         hint.set_wrap(true);
         hint.set_max_width_chars(32);
         self.search_results.append(&hint);
@@ -560,7 +644,7 @@ impl Ui {
                 }
             },
             TrayEvent::Availability(online) => {
-                if !online && !self.window.is_visible() {
+                if !online && !self.clock_online.get() && !self.window.is_visible() {
                     self.window.present();
                 }
             }
@@ -575,26 +659,38 @@ impl Ui {
 
     fn update_tray(&self) {
         let state = self.state.borrow();
+        if let Some(desktop) = self.desktop.borrow().as_ref() {
+            desktop.update(
+                state.saved.as_ref(),
+                state.prefs.units,
+                state.stale,
+                self.demo,
+            );
+        }
         if let Some(handle) = &state.tray {
             handle.update(|tray| {
                 tray.saved = state.saved.clone();
                 tray.units = state.prefs.units;
                 tray.stale = state.stale;
+                tray.clock_active = self.clock_online.get();
             });
         }
     }
 
     fn update_tray_status(&self) {
         let state = self.state.borrow();
-        let available = state.tray.is_some() && self.online.load(Ordering::Relaxed);
+        let available = self.clock_online.get()
+            || (state.tray.is_some() && self.online.load(Ordering::Relaxed));
         self.tray_action.set_enabled(available);
-        self.tray_status.set_text(if !available {
+        self.tray_status.set_text(&tr(if !available {
             "System tray unavailable on this desktop"
+        } else if self.clock_online.get() && state.prefs.keep_in_tray {
+            "Weather is displayed beside the GNOME clock"
         } else if state.prefs.keep_in_tray {
             "Closing the window keeps weather in your system tray"
         } else {
             "Closing the window quits Open Meteo"
-        });
+        }));
     }
 
     fn render(self: &Rc<Self>) {
@@ -615,26 +711,36 @@ impl Ui {
         self.notice_retry.set_sensitive(!state.loading);
         if let Some(error) = &state.error {
             self.notice_text.set_text(&format!(
-                "{error}{}",
+                "{}{}",
+                tr(error),
                 if state.saved.is_some() {
-                    " Showing saved weather."
+                    format!(" {}", tr("Showing saved weather."))
                 } else {
-                    ""
+                    String::new()
                 }
             ));
         } else if self.demo {
-            self.notice_text
-                .set_text("Preview · Sample weather for Paris, not a live forecast.");
+            self.notice_text.set_text(&tr(
+                "Preview · Sample weather for Paris, not a live forecast.",
+            ));
         } else if state.stale {
             if let Some(saved) = &state.saved {
-                self.notice_text.set_text(&format!(
-                    "Saved forecast from {}. {}",
-                    saved.forecast.local_time(saved.fetched_at, "%e %b, %H:%M"),
-                    if state.loading {
-                        "Checking for updates…"
-                    } else {
-                        "Refresh for the latest weather."
-                    }
+                self.notice_text.set_text(&tf(
+                    "Saved forecast from {time}. {status}",
+                    &[
+                        (
+                            "time",
+                            &i18n::time(&saved.forecast, saved.fetched_at, "%e %b, %H:%M"),
+                        ),
+                        (
+                            "status",
+                            &tr(if state.loading {
+                                "Checking for updates…"
+                            } else {
+                                "Refresh for the latest weather."
+                            }),
+                        ),
+                    ],
                 ));
             }
         }
@@ -676,24 +782,32 @@ impl Ui {
             let footer = gtk::Box::new(Orientation::Vertical, 6);
             footer.add_css_class("footer");
             let stamp = if self.demo {
-                "Preview · Sample weather, not a live forecast".into()
+                tr("Preview · Sample weather, not a live forecast")
             } else {
-                format!(
-                    "{} · {} · Conditions at {}",
-                    if state.stale {
-                        "Saved forecast"
-                    } else {
-                        "Updated"
-                    },
-                    f.local_time(saved.fetched_at, "%e %b, %H:%M"),
-                    f.local_time(f.current.time, "%e %b, %H:%M")
+                tf(
+                    "{status} · {updated} · Conditions at {time}",
+                    &[
+                        (
+                            "status",
+                            &tr(if state.stale {
+                                "Saved forecast"
+                            } else {
+                                "Updated"
+                            }),
+                        ),
+                        ("updated", &i18n::time(f, saved.fetched_at, "%e %b, %H:%M")),
+                        ("time", &i18n::time(f, f.current.time, "%e %b, %H:%M")),
+                    ],
                 )
             };
             let updated = label(&stamp, "section-caption");
             updated.set_wrap(true);
             footer.append(&updated);
             let timezone = label(
-                &format!("Forecast times in {}", f.timezone.replace('_', " ")),
+                &tf(
+                    "Forecast times in {zone}",
+                    &[("zone", &f.timezone.replace('_', " "))],
+                ),
                 "section-caption",
             );
             timezone.set_wrap(true);
@@ -706,7 +820,7 @@ impl Ui {
             let sources = gtk::Box::new(Orientation::Horizontal, 4);
             sources.append(&gtk::LinkButton::with_label(
                 "https://open-meteo.com/",
-                "Weather by Open-Meteo",
+                &tr("Weather by Open-Meteo"),
             ));
             sources.append(&gtk::LinkButton::with_label(
                 "https://www.geonames.org/",
@@ -716,7 +830,7 @@ impl Ui {
             self.content.append(&footer);
         } else if state.loading {
             let loading = adw::StatusPage::builder()
-                .title("Getting your forecast")
+                .title(tr("Getting your forecast"))
                 .description(
                     state
                         .prefs
@@ -730,19 +844,19 @@ impl Ui {
             self.content.append(&loading);
         } else {
             let page = adw::StatusPage::builder()
-                .title(if state.error.is_some() {
+                .title(tr(if state.error.is_some() {
                     "Weather is taking a moment"
                 } else {
                     "Your weather, at a glance"
-                })
-                .description(if state.error.is_some() {
+                }))
+                .description(tr(if state.error.is_some() {
                     "Try refreshing, or choose another location."
                 } else {
                     "Find your city for current conditions, the next 24 hours, and the week ahead."
-                })
+                }))
                 .icon_name("weather-few-clouds-symbolic")
                 .build();
-            let button = gtk::Button::with_label("Find a location");
+            let button = gtk::Button::with_label(&tr("Find a location"));
             button.add_css_class("suggested-action");
             button.add_css_class("pill");
             button.set_halign(gtk::Align::Center);
@@ -757,10 +871,10 @@ impl Ui {
         let about = adw::AboutWindow::builder().transient_for(&self.window).modal(true)
             .application_name("Open Meteo").application_icon("weather-few-clouds")
             .version(env!("CARGO_PKG_VERSION"))
-            .comments("A native Linux weather app.\n\nForecasts by Open-Meteo, location data by GeoNames. An independent client, not affiliated with the Open-Meteo service.")
+            .comments(format!("{}\n\n{}", tr("A native Linux weather app."), tr("Forecasts by Open-Meteo, location data by GeoNames. An independent client, not affiliated with the Open-Meteo service.")))
             .website("https://open-meteo.com/").build();
         about.add_link(
-            "Weather data and attribution",
+            &tr("Weather by Open-Meteo"),
             "https://open-meteo.com/en/terms",
         );
         about.present();

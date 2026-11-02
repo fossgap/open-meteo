@@ -1,3 +1,4 @@
+use crate::i18n::{self, tf, tr};
 use crate::model::{Forecast, Location, Units, compass, condition, percentage};
 use adw::prelude::*;
 use gtk::{Orientation, cairo};
@@ -34,26 +35,33 @@ pub fn current(location: &Location, f: &Forecast, units: Units, now: i64) -> gtk
     let reading = gtk::Box::new(Orientation::Vertical, 0);
     reading.set_hexpand(true);
     let temperature = label(&units.degrees(f.current.temperature_2m), "temperature");
-    temperature.set_tooltip_text(Some(&format!(
-        "Temperature in {}",
-        if units == Units::Celsius {
-            "Celsius"
-        } else {
-            "Fahrenheit"
-        }
+    temperature.set_tooltip_text(Some(&tf(
+        "Temperature in {unit}",
+        &[(
+            "unit",
+            &tr(if units == Units::Celsius {
+                "Celsius"
+            } else {
+                "Fahrenheit"
+            }),
+        )],
     )));
     reading.append(&temperature);
     let (description, icon) = condition(f.current.weather_code, f.current.is_day != Some(0));
-    let description = label(description, "conditions");
+    let description = label(&tr(description), "conditions");
     description.set_wrap(true);
     reading.append(&description);
     let feels = label(
-        &format!(
-            "Feels like {}",
-            units.degrees(f.current.apparent_temperature)
+        &tf(
+            "Feels like {temperature}",
+            &[(
+                "temperature",
+                &units.degrees(f.current.apparent_temperature),
+            )],
         ),
         "current-details",
     );
+    feels.set_wrap(true);
     feels.set_margin_top(6);
     reading.append(&feels);
     main.append(&reading);
@@ -65,13 +73,17 @@ pub fn current(location: &Location, f: &Forecast, units: Units, now: i64) -> gtk
     visual.append(&image);
     if let Some(&today) = f.days(now).first() {
         let range = label(
-            &format!(
-                "H {}   L {}",
-                units.degrees(f.daily.temperature_2m_max[today]),
-                units.degrees(f.daily.temperature_2m_min[today])
+            &tf(
+                "H {high}   L {low}",
+                &[
+                    ("high", &units.degrees(f.daily.temperature_2m_max[today])),
+                    ("low", &units.degrees(f.daily.temperature_2m_min[today])),
+                ],
             ),
             "current-details",
         );
+        range.set_wrap(true);
+        range.set_max_width_chars(16);
         range.set_halign(gtk::Align::Center);
         visual.append(&range);
     }
@@ -97,15 +109,15 @@ pub fn current(location: &Location, f: &Forecast, units: Units, now: i64) -> gtk
             format!(
                 "{} {}",
                 units.wind(f.current.wind_speed_10m),
-                compass(f.current.wind_direction_10m)
+                tr(compass(f.current.wind_direction_10m))
             ),
         ),
         ("Humidity", percentage(f.current.relative_humidity_2m)),
         ("Precipitation chance", percentage(rain)),
-        ("Conditions at", f.local_time(f.current.time, "%H:%M")),
+        ("Conditions at", i18n::time(f, f.current.time, "%H:%M")),
     ] {
         let item = gtk::Box::new(Orientation::Vertical, 5);
-        let caption = label(title, "stat-label");
+        let caption = label(&tr(title), "stat-label");
         caption.set_wrap(true);
         item.append(&caption);
         item.append(&label(value.trim(), "stat-value"));
@@ -120,8 +132,10 @@ pub fn current(location: &Location, f: &Forecast, units: Units, now: i64) -> gtk
 
 fn heading(title: &str, subtitle: &str) -> gtk::Box {
     let section = gtk::Box::new(Orientation::Vertical, 5);
-    section.append(&label(title, "section-title"));
-    let caption = label(subtitle, "section-caption");
+    let title = label(&tr(title), "section-title");
+    title.set_wrap(true);
+    section.append(&title);
+    let caption = label(&tr(subtitle), "section-caption");
     caption.set_wrap(true);
     section.append(&caption);
     section
@@ -132,7 +146,7 @@ pub fn hourly(f: &Forecast, units: Units, now: i64) -> gtk::Box {
     let hours = f.hours(now);
     if hours.is_empty() {
         let empty = label(
-            "This saved hourly forecast has ended. Refresh to get the latest weather.",
+            &tr("This saved hourly forecast has ended. Refresh to get the latest weather."),
             "section-caption",
         );
         empty.set_wrap(true);
@@ -141,14 +155,15 @@ pub fn hourly(f: &Forecast, units: Units, now: i64) -> gtk::Box {
         return section;
     }
     let row = gtk::Box::new(Orientation::Horizontal, 3);
+    row.set_direction(gtk::TextDirection::Ltr);
     for &i in &hours {
         let cell = gtk::Box::new(Orientation::Vertical, 10);
         cell.add_css_class("hour");
         cell.set_width_request(48);
         let time = if f.hourly.time[i] <= now && now < f.hourly.time[i].saturating_add(3600) {
-            "Now".into()
+            tr("Now")
         } else {
-            f.local_time(f.hourly.time[i], "%H:%M")
+            i18n::time(f, f.hourly.time[i], "%H:%M")
         };
         let hour = label(&time, "hour-time");
         hour.set_halign(gtk::Align::Center);
@@ -168,12 +183,14 @@ pub fn hourly(f: &Forecast, units: Units, now: i64) -> gtk::Box {
         let rain = label(&percentage(f.hourly.precipitation_probability[i]), "rain");
         rain.set_halign(gtk::Align::Center);
         cell.append(&rain);
-        cell.set_tooltip_text(Some(&format!(
-            "{} · {}\n{} · {} chance of precipitation",
-            f.local_time(f.hourly.time[i], "%a %H:%M %Z"),
-            description,
-            units.degrees(f.hourly.temperature_2m[i]),
-            percentage(f.hourly.precipitation_probability[i])
+        cell.set_tooltip_text(Some(&tf(
+            "{time} · {condition}\n{temperature} · {rain} chance of precipitation",
+            &[
+                ("time", &i18n::time(f, f.hourly.time[i], "%a %H:%M %Z")),
+                ("condition", &tr(description)),
+                ("temperature", &units.degrees(f.hourly.temperature_2m[i])),
+                ("rain", &percentage(f.hourly.precipitation_probability[i])),
+            ],
         )));
         row.append(&cell);
     }
@@ -185,7 +202,13 @@ pub fn hourly(f: &Forecast, units: Units, now: i64) -> gtk::Box {
         .child(&row)
         .build();
     scroll.add_css_class("hourly-scroll");
-    scroll.set_tooltip_text(Some("Scroll horizontally for all 24 hours"));
+    scroll.set_direction(gtk::TextDirection::Ltr);
+    // GTK creates a viewport around the box. Text direction is per-widget,
+    // so set it there too to preserve the current hour when resizing in RTL.
+    if let Some(viewport) = scroll.child() {
+        viewport.set_direction(gtk::TextDirection::Ltr);
+    }
+    scroll.set_tooltip_text(Some(&tr("Scroll horizontally for all 24 hours")));
     section.append(&scroll);
 
     let chart = temperature_chart(f, &hours, units);
@@ -197,25 +220,28 @@ pub fn hourly(f: &Forecast, units: Units, now: i64) -> gtk::Box {
             (
                 "Sunrise",
                 f.daily.sunrise[day]
-                    .map(|t| f.local_time(t, "%H:%M"))
+                    .map(|t| i18n::time(f, t, "%H:%M"))
                     .unwrap_or_else(|| "—".into()),
             ),
             (
                 "Sunset",
                 f.daily.sunset[day]
-                    .map(|t| f.local_time(t, "%H:%M"))
+                    .map(|t| i18n::time(f, t, "%H:%M"))
                     .unwrap_or_else(|| "—".into()),
             ),
             (
                 "UV index",
                 f.daily.uv_index_max[day]
-                    .map(|v| format!("{v:.1}"))
+                    .map(|v| i18n::number(&format!("{v:.1}")))
                     .unwrap_or_else(|| "—".into()),
             ),
         ] {
             let item = gtk::Box::new(Orientation::Vertical, 6);
             item.set_hexpand(true);
-            item.append(&label(title, "stat-label"));
+            let title = label(&tr(title), "stat-label");
+            title.set_wrap(true);
+            title.set_max_width_chars(12);
+            item.append(&title);
             item.append(&label(&value, "stat-value"));
             daylight.append(&item);
         }
@@ -248,19 +274,22 @@ pub fn daily(f: &Forecast, units: Units, now: i64) -> gtk::Box {
             .day_date(i)
             .map(|d| {
                 if d.to_string() == today {
-                    "Today".into()
+                    tr("Today")
                 } else {
-                    d.format("%a").to_string()
+                    i18n::weekday(d)
                 }
             })
             .unwrap_or_else(|| "—".into());
         let day = label(&name, "day-name");
+        day.set_ellipsize(gtk::pango::EllipsizeMode::End);
+        day.set_max_width_chars(6);
+        day.set_tooltip_text(Some(&name));
         day.set_width_chars(5);
         row.append(&day);
         let (description, icon) = condition(f.daily.weather_code[i], true);
         let image = gtk::Image::from_icon_name(icon);
         image.set_pixel_size(22);
-        image.set_tooltip_text(Some(description));
+        image.set_tooltip_text(Some(&tr(description)));
         row.append(&image);
         let rain = label(
             &percentage(f.daily.precipitation_probability_max[i]),
@@ -291,23 +320,29 @@ pub fn daily(f: &Forecast, units: Units, now: i64) -> gtk::Box {
         row.append(&max);
         let details = gtk::Box::new(Orientation::Vertical, 5);
         details.add_css_class("day-details");
-        details.append(&label(description, ""));
+        details.append(&label(&tr(description), ""));
         let wind = label(
-            &format!(
-                "Maximum wind: {}",
-                units.wind(f.daily.wind_speed_10m_max[i])
+            &tf(
+                "Maximum wind: {wind}",
+                &[("wind", &units.wind(f.daily.wind_speed_10m_max[i]))],
             ),
             "",
         );
         wind.set_wrap(true);
         details.append(&wind);
         let sunrise = f.daily.sunrise[i]
-            .map(|t| f.local_time(t, "%H:%M"))
+            .map(|t| i18n::time(f, t, "%H:%M"))
             .unwrap_or_else(|| "—".into());
         let sunset = f.daily.sunset[i]
-            .map(|t| f.local_time(t, "%H:%M"))
+            .map(|t| i18n::time(f, t, "%H:%M"))
             .unwrap_or_else(|| "—".into());
-        let sun = label(&format!("Sunrise {sunrise} · Sunset {sunset}"), "");
+        let sun = label(
+            &tf(
+                "Sunrise {sunrise} · Sunset {sunset}",
+                &[("sunrise", &sunrise), ("sunset", &sunset)],
+            ),
+            "",
+        );
         sun.set_wrap(true);
         details.append(&sun);
         let expander = gtk::Expander::builder()
@@ -315,24 +350,28 @@ pub fn daily(f: &Forecast, units: Units, now: i64) -> gtk::Box {
             .child(&details)
             .hexpand(true)
             .build();
-        expander.update_property(&[gtk::accessible::Property::Label(&format!(
-            "{name} forecast"
+        expander.update_property(&[gtk::accessible::Property::Label(&tf(
+            "{day} forecast",
+            &[("day", &name)],
         ))]);
-        expander.set_tooltip_text(Some(&format!(
-            "{}: {}. Low {}, high {}. {} chance of precipitation.",
-            f.day_date(i)
-                .map(|d| d.format("%A, %e %B").to_string())
-                .unwrap_or_default(),
-            description,
-            units.degrees(f.daily.temperature_2m_min[i]),
-            units.degrees(f.daily.temperature_2m_max[i]),
-            percentage(f.daily.precipitation_probability_max[i])
+        expander.set_tooltip_text(Some(&tf(
+            "{day}: {condition}. Low {low}, high {high}. {rain} chance of precipitation.",
+            &[
+                ("day", &f.day_date(i).map(i18n::date).unwrap_or_default()),
+                ("condition", &tr(description)),
+                ("low", &units.degrees(f.daily.temperature_2m_min[i])),
+                ("high", &units.degrees(f.daily.temperature_2m_max[i])),
+                (
+                    "rain",
+                    &percentage(f.daily.precipitation_probability_max[i]),
+                ),
+            ],
         )));
         list.append(&expander);
     }
     if days.is_empty() {
         let empty = label(
-            "This saved daily forecast has ended. Refresh to get the latest weather.",
+            &tr("This saved daily forecast has ended. Refresh to get the latest weather."),
             "section-caption",
         );
         empty.set_wrap(true);
@@ -351,6 +390,10 @@ fn range_bar(min: Option<f64>, max: Option<f64>, low: f64, high: f64) -> gtk::Dr
         .build();
     area.set_draw_func(move |_, cr, width, height| {
         let width = f64::from(width);
+        if i18n::rtl() {
+            cr.translate(width, 0.0);
+            cr.scale(-1.0, 1.0);
+        }
         let y = f64::from(height) / 2.0;
         cr.set_line_cap(cairo::LineCap::Round);
         cr.set_line_width(5.0);
@@ -388,17 +431,14 @@ fn temperature_chart(f: &Forecast, hours: &[usize], units: Units) -> gtk::Drawin
         .collect();
     let times: Vec<String> = hours
         .iter()
-        .map(|&i| f.local_time(f.hourly.time[i], "%H:%M"))
+        .map(|&i| i18n::time(f, f.hourly.time[i], "%H:%M"))
         .collect();
     let area = gtk::DrawingArea::builder()
         .content_height(116)
         .hexpand(true)
         .build();
     area.add_css_class("chart");
-    area.set_tooltip_text(Some(&format!(
-        "24-hour temperature trend in {}. All readings are available in the hourly strip above.",
-        units.symbol()
-    )));
+    area.set_tooltip_text(Some(&tf("24-hour temperature trend in {unit}. All readings are available in the hourly strip above.", &[("unit", units.symbol())])));
     area.set_draw_func(move |_, cr, width, height| {
         let Some((min, max)) = temperature_bounds(&values) else {
             return;
@@ -409,34 +449,33 @@ fn temperature_chart(f: &Forecast, hours: &[usize], units: Units) -> gtk::Drawin
         let span = max - min;
         let count = values.len().saturating_sub(1).max(1) as f64;
         let point = |i: usize, v: f64| (34.0 + i as f64 / count * w, 12.0 + (max - v) / span * h);
-        cr.select_font_face(
-            "sans-serif",
-            cairo::FontSlant::Normal,
-            cairo::FontWeight::Normal,
-        );
-        cr.set_font_size(11.0);
+        let text_layout = pangocairo::functions::create_layout(cr);
+        let mut font = gtk::pango::FontDescription::from_string("Sans");
+        font.set_absolute_size(11.0 * f64::from(gtk::pango::SCALE));
+        text_layout.set_font_description(Some(&font));
+        let draw_text = |text: &str, x: f64, baseline: f64| {
+            text_layout.set_text(text);
+            cr.move_to(
+                x,
+                baseline - f64::from(text_layout.baseline()) / f64::from(gtk::pango::SCALE),
+            );
+            pangocairo::functions::show_layout(cr, &text_layout);
+        };
         if dark {
             cr.set_source_rgb(0.67, 0.74, 0.80);
         } else {
             cr.set_source_rgb(0.36, 0.43, 0.50);
         }
         for (value, y) in [(max, 16.0), (min, h + 16.0)] {
-            cr.move_to(0.0, y);
-            let _ = cr.show_text(&format!("{value:.0}°"));
+            draw_text(&i18n::number(&format!("{value:.0}°")), 0.0, y);
         }
         for i in [0, values.len() / 3, 2 * values.len() / 3, values.len() - 1] {
             let x = 34.0 + i as f64 / count * w;
-            let text_x = cr
-                .text_extents(&times[i])
-                .map(|extent| {
-                    (x - extent.width() / 2.0 - extent.x_bearing()).clamp(
-                        -extent.x_bearing(),
-                        f64::from(width) - extent.width() - extent.x_bearing(),
-                    )
-                })
-                .unwrap_or(x - 15.0);
-            cr.move_to(text_x, f64::from(height) - 3.0);
-            let _ = cr.show_text(&times[i]);
+            text_layout.set_text(&times[i]);
+            let text_width = f64::from(text_layout.pixel_size().0);
+            let text_x =
+                (x - text_width / 2.0).clamp(0.0, (f64::from(width) - text_width).max(0.0));
+            draw_text(&times[i], text_x, f64::from(height) - 3.0);
         }
         cr.set_source_rgba(0.45, 0.55, 0.65, 0.18);
         cr.set_line_width(1.0);

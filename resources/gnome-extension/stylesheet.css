@@ -1,0 +1,11 @@
+.open-meteo-clock {
+    spacing: 5px;
+    padding-right: 10px;
+}
+.open-meteo-clock:rtl {
+    padding-right: 0;
+    padding-left: 10px;
+}
+.open-meteo-clock-icon { icon-size: 16px; }
+.open-meteo-clock-saved { opacity: 0.65; }
+.open-meteo-summary { max-width: 32em; }

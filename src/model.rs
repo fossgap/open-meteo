@@ -58,7 +58,7 @@ impl Units {
     pub fn degrees(self, value: Option<f64>) -> String {
         value
             .filter(|v| v.is_finite())
-            .map(|v| format!("{:.0}°", self.convert(v)))
+            .map(|v| crate::i18n::number(&format!("{:.0}°", self.convert(v))))
             .unwrap_or_else(|| "—".into())
     }
 
@@ -79,8 +79,16 @@ impl Units {
     pub fn wind(self, kmh: Option<f64>) -> String {
         kmh.filter(|v| v.is_finite())
             .map(|v| match self {
-                Self::Celsius => format!("{v:.0} km/h"),
-                Self::Fahrenheit => format!("{:.0} mph", v / 1.609344),
+                Self::Celsius => format!(
+                    "{} {}",
+                    crate::i18n::number(&format!("{v:.0}")),
+                    crate::i18n::tr("km/h")
+                ),
+                Self::Fahrenheit => format!(
+                    "{} {}",
+                    crate::i18n::number(&format!("{:.0}", v / 1.609344)),
+                    crate::i18n::tr("mph")
+                ),
             })
             .unwrap_or_else(|| "—".into())
     }
@@ -228,7 +236,7 @@ impl Forecast {
 pub fn percentage(value: Option<f64>) -> String {
     value
         .filter(|v| v.is_finite())
-        .map(|v| format!("{v:.0}%"))
+        .map(|v| crate::i18n::number(&format!("{v:.0}%")))
         .unwrap_or_else(|| "—".into())
 }
 

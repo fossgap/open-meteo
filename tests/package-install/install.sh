@@ -61,15 +61,17 @@ case "$format" in
     deb|appimage)
         apt-get update
         apt-get -y --no-install-recommends install python3-gi gir1.2-atspi-2.0 at-spi2-core \
-            xvfb xauth dbus-x11 xdotool x11-utils imagemagick fonts-dejavu-core desktop-file-utils
+            xvfb xauth dbus-x11 xdotool x11-utils imagemagick fonts-dejavu-core \
+            fonts-noto-core fonts-noto-cjk desktop-file-utils
         ;;
     rpm)
         dnf -y --setopt=install_weak_deps=False install python3-gobject-base gobject-introspection at-spi2-core xorg-x11-server-Xvfb \
-            xorg-x11-xauth dbus-daemon xdotool xwininfo ImageMagick dejavu-sans-fonts desktop-file-utils
+            xorg-x11-xauth dbus-daemon xdotool xwininfo ImageMagick dejavu-sans-fonts \
+            google-noto-sans-arabic-fonts google-noto-sans-devanagari-fonts google-noto-sans-cjk-fonts desktop-file-utils
         ;;
     arch)
         pacman --noconfirm -S --needed python-gobject at-spi2-core xorg-server-xvfb \
-            xorg-xauth dbus xdotool xorg-xwininfo imagemagick ttf-dejavu desktop-file-utils
+            xorg-xauth dbus xdotool xorg-xwininfo imagemagick ttf-dejavu noto-fonts noto-fonts-cjk desktop-file-utils
         ;;
 esac
 if [ "$format" = appimage ]; then

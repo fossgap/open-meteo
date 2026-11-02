@@ -13,12 +13,14 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 APP_ID = "io.github.open_meteo.OpenMeteo"
 REPOSITORY = "https://github.com/fossgap/open-meteo"
+EXTENSION = "usr/share/gnome-shell/extensions/open-meteo-clock@fossgap.github.io"
 PAYLOAD = {
     "usr/bin/open-meteo",
     f"usr/share/applications/{APP_ID}.desktop",
     f"usr/share/icons/hicolor/scalable/apps/{APP_ID}.svg",
     "usr/share/doc/open-meteo/README.md",
 }
+PAYLOAD.update(f"{EXTENSION}/{name}" for name in ("metadata.json", "extension.js", "stylesheet.css"))
 
 
 def require(condition, message):
@@ -88,6 +90,9 @@ def verify_payload(contents, label):
     require(binary.startswith(b"\x7fELF") and mode & 0o111, f"Missing executable ELF in {label}")
     desktop = contents[f"usr/share/applications/{APP_ID}.desktop"][0].decode()
     require("Exec=open-meteo\n" in desktop and f"Icon={APP_ID}\n" in desktop, f"Invalid desktop integration in {label}")
+    for name in ("metadata.json", "extension.js", "stylesheet.css"):
+        require(contents[f"{EXTENSION}/{name}"][0] == (ROOT / "resources/gnome-extension" / name).read_bytes(),
+                f"GNOME extension differs from source in {label}: {name}")
     with tempfile.TemporaryDirectory(prefix="open-meteo-desktop-") as temp:
         path = Path(temp) / f"{APP_ID}.desktop"
         path.write_text(desktop)
@@ -132,6 +137,10 @@ def verify_artifacts(directory, files, version):
     payload = run("rpm2cpio", rpm)
     binary = subprocess.run(["cpio", "--extract", "--to-stdout", "./usr/bin/open-meteo"], input=payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True).stdout
     require(digest(binary) == binary_hash, "RPM executable differs from DEB")
+    for name in ("metadata.json", "extension.js", "stylesheet.css"):
+        data = subprocess.run(["cpio", "--extract", "--to-stdout", f"./{EXTENSION}/{name}"], input=payload,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True).stdout
+        require(data == (ROOT / "resources/gnome-extension" / name).read_bytes(), f"RPM extension differs: {name}")
 
     arch = tar_contents(run("zstd", "-dc", str(directory / files["arch"])))
     require(".PKGINFO" in arch, "Missing Arch package metadata")
@@ -166,6 +175,10 @@ def verify_artifacts(directory, files, version):
     prefix = f"open-meteo-{version}/"
     required = {prefix + name for name in ["Cargo.toml", "Cargo.lock", "src/main.rs", "tests/ui_smoke.py", "tests/fixtures/forecast.json", "scripts/package.sh", "scripts/verify-packages.py", "packaging/arch/PKGBUILD", "packaging/rpm/open-meteo.spec", "Dockerfile", "Makefile", "README.md", ".github/workflows/test-ci.yml", ".github/workflows/release-ci.yml"]}
     require(required <= source.keys(), f"Source archive missing files: {required - source.keys()}")
+    for absolute in [*(ROOT / "resources/locales").glob("*.json"), *(ROOT / "resources/gnome-extension").glob("*")]:
+        path = absolute.relative_to(ROOT)
+        require(prefix + str(path) in source, f"Source archive missing {path}")
+        require(source[prefix + str(path)][0] == (ROOT / path).read_bytes(), f"Source archive differs: {path}")
     require(all(name.startswith(prefix) for name in source), "Source archive must have a single versioned root")
     require(f'version = "{version}"' in source[prefix + "Cargo.toml"][0].decode().splitlines(), "Source version mismatch")
     recipe = (directory / files["recipe"]).read_text()

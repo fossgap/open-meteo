@@ -1,0 +1,8 @@
+{
+  "uuid": "open-meteo-clock@fossgap.github.io",
+  "name": "Open Meteo Clock",
+  "description": "Show Open Meteo's temperature beside the system clock. Uses the running app's location, units and forecast.",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "url": "https://github.com/fossgap/open-meteo",
+  "version": 1
+}

@@ -16,6 +16,12 @@ runs. The checks cover:
 - Real GTK controls under Xvfb and a private D-Bus session: theme changes, units,
   search states, narrow layout, daily details, tray menus/hiding/restoration/loss,
   first launch, offline cache, preferences, and quit.
+- Temperature-icon updates, GNOME bridge attach/detach/crash recovery, all six
+  translations at wide and narrow sizes, and language selection/persistence.
+- A separate [GNOME Clock CI](../.github/workflows/gnome-ci.yml) runs GNOME 50 in
+  an isolated Fedora 44 container: clock placement, forecast actions, unit and
+  saved-weather updates, app restarts, and extension disable/re-enable. The
+  host desktop and installed extensions are untouched.
 
 The native tests use synthetic weather, temporary settings, mock desktop services,
 and a refused local proxy. They do not require the weather API. Live API testing
@@ -41,7 +47,8 @@ six artifacts plus `SHA256SUMS`:
 | `PKGBUILD` | Arch source recipe containing that archive's SHA-256 |
 
 `scripts/verify-packages.py` requires this exact inventory, verifies versions,
-architectures, dependency declarations, and launcher/icon/docs payloads. Native
+architectures, dependency declarations, launcher/icon/docs payloads, and exact
+GNOME extension files. The source archive must contain all translation catalogs. Native
 package executables must match byte for byte. AppImage code, read-only data, and
 build ID must match the native binary; linuxdeploy changes its ELF runtime path.
 The verifier checks the AppImage's GTK libraries
@@ -80,7 +87,7 @@ git push origin v0.1.0
 ```
 
 Mismatched tags fail before the container build. A separate publication job runs
-only on tag **pushes**, after the build and all five installation jobs pass. It
+only on tag **pushes**, after the build, GNOME clock tests, and all five installation jobs pass. It
 rechecks the downloaded inventory/checksums and creates a release with generated
 notes; it does not overwrite an existing release. Only this job gets
 `contents: write`, using GitHub's provided token.
@@ -99,6 +106,8 @@ downloads become available after the corresponding GitHub runs/publication.
 ```sh
 docker build -t open-meteo-ci .
 sh scripts/ci.sh check
+docker build -f tests/gnome.Dockerfile -t open-meteo-gnome .
+docker run --rm --tmpfs /tmp:rw,exec --shm-size=1g open-meteo-gnome
 sh scripts/ci.sh release
 for target in debian kali fedora arch appimage; do
     sh scripts/check-package-installation.sh "$target" dist/release
