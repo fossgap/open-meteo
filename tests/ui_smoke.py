@@ -152,7 +152,7 @@ def run_checks():
     with tempfile.TemporaryDirectory(prefix="open-meteo-ui-") as directory:
         temp = Path(directory)
         env = os.environ.copy()
-        env.update({"XDG_CONFIG_HOME": str(temp / "config"), "XDG_CACHE_HOME": str(temp / "cache"),
+        env.update({"XDG_CONFIG_HOME": str(temp / "config"), "XDG_CACHE_HOME": str(temp / "cache"), "XDG_DATA_HOME": str(temp / "data"),
                     "GDK_BACKEND": "x11", "GSK_RENDERER": "cairo", "GIO_USE_VFS": "local", "GTK_A11Y": "atspi",
                     "HTTPS_PROXY": "http://127.0.0.1:9", "HTTP_PROXY": "http://127.0.0.1:9",
                     "ALL_PROXY": "http://127.0.0.1:9", "NO_PROXY": "", "LC_ALL": "C.UTF-8", "LANGUAGE": "en"})
@@ -210,6 +210,12 @@ def run_checks():
             setting("SetColorScheme", GLib.Variant("(u)", (1,)))
             time.sleep(1)
             capture("desktop-dark", window, output)
+            call("io.github.open_meteo.OpenMeteo.Demo", "/io/github/open_meteo/OpenMeteo/Demo", "org.gtk.Actions", "Activate",
+                 GLib.Variant("(sava{sv})", ("clock-setup", [], {})))
+            wait_for(lambda: text_present("Extension installed. Run clock setup from a GNOME session to enable it."), "one-action clock setup result")
+            capture("clock-setup", window, output)
+            xdo("key", "Escape")
+            xdo("windowfocus", window)
             # The real Rust tray must register and expose weather via D-Bus.
             def registered():
                 return call(WATCHER, "/StatusNotifierWatcher", "org.freedesktop.DBus.Properties", "Get", GLib.Variant("(ss)", (WATCHER, "RegisteredStatusNotifierItems"))).unpack()[0]
@@ -220,11 +226,21 @@ def run_checks():
             assert "Paris" in title and "21°" in title and "sample" in title, title
             def tray_property(name):
                 return call(service, path, "org.freedesktop.DBus.Properties", "Get", GLib.Variant("(ss)", ("org.kde.StatusNotifierItem", name))).unpack()[0]
-            assert tray_property("IconName") == "", "Host must render the temperature pixmap"
+            assert tray_property("IconName") == "", "Host must render the combined weather and temperature pixmap"
             pixmaps = tray_property("IconPixmap")
-            assert len(pixmaps) == 4 and all(len(pixels) == width * height * 4 for width, height, pixels in pixmaps), "Missing temperature pixmaps"
+            assert len(pixmaps) == 4 and all(len(pixels) == width * height * 4 for width, height, pixels in pixmaps), "Missing weather and temperature pixmaps"
+            assert tray_property("ToolTip")[0].startswith("weather-"), "Condition icon must remain available"
+            for width, height, pixels in pixmaps:
+                top = pixels[:height // 2 * width * 4]
+                bottom = pixels[height * 2 * width:]
+                assert any(top[::4]) and any(bottom[::4]), "Both the weather symbol and temperature must render"
+                # Retain the actual SNI pixels for visual review, including alpha.
+                rgba = bytes(channel for i in range(0, len(pixels), 4) for channel in (*pixels[i+1:i+4], pixels[i]))
+                subprocess.run(["convert", "-size", f"{width}x{height}", "-depth", "8", "rgba:-", str(output / f"tray-{width}.png")], input=rgba, check=True)
             click("°F")
             wait_for(lambda: tray_property("IconPixmap") != pixmaps, "temperature icon changes with units")
+            for (width, height, before), (_, _, after) in zip(pixmaps, tray_property("IconPixmap")):
+                assert before[:height // 2 * width * 4] == after[:height // 2 * width * 4], "Changing units must not remove or replace the weather symbol"
             click("°C")
             menu_path = call(service, path, "org.freedesktop.DBus.Properties", "Get", GLib.Variant("(ss)", ("org.kde.StatusNotifierItem", "Menu"))).unpack()[0]
             layout = call(service, menu_path, "com.canonical.dbusmenu", "GetLayout", GLib.Variant("(iias)", (0, -1, []))).unpack()

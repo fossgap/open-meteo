@@ -12,35 +12,6 @@ pub const PATH: &str = "/io/github/open_meteo/OpenMeteo/Weather";
 pub const INTERFACE: &str = "io.github.open_meteo.OpenMeteo.Weather1";
 pub const EXTENSION_ID: &str = "open-meteo-clock@fossgap.github.io";
 
-pub fn install_extension() -> std::io::Result<std::path::PathBuf> {
-    use std::{fs, path::PathBuf};
-    let data = std::env::var_os("XDG_DATA_HOME")
-        .map(PathBuf::from)
-        .filter(|p| p.is_absolute())
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share")))
-        .ok_or_else(|| std::io::Error::other("No user data directory is available"))?;
-    let path = data.join("gnome-shell/extensions").join(EXTENSION_ID);
-    fs::create_dir_all(&path)?;
-    for (name, text) in [
-        (
-            "metadata.json",
-            include_str!("../resources/gnome-extension/metadata.json"),
-        ),
-        (
-            "extension.js",
-            include_str!("../resources/gnome-extension/extension.js"),
-        ),
-        (
-            "stylesheet.css",
-            include_str!("../resources/gnome-extension/stylesheet.css"),
-        ),
-    ] {
-        let temporary = path.join(format!(".{name}.{}.tmp", std::process::id()));
-        fs::write(&temporary, text)?;
-        fs::rename(temporary, path.join(name))?;
-    }
-    Ok(path)
-}
 const XML: &str = r#"<node><interface name="io.github.open_meteo.OpenMeteo.Weather1">
 <method name="GetSnapshot"><arg type="s" direction="out"/></method>
 <method name="Attach"><arg type="s" direction="out"/></method>

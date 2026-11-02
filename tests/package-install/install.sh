@@ -62,7 +62,7 @@ case "$format" in
         apt-get update
         apt-get -y --no-install-recommends install python3-gi gir1.2-atspi-2.0 at-spi2-core \
             xvfb xauth dbus-x11 xdotool x11-utils imagemagick fonts-dejavu-core \
-            fonts-noto-core fonts-noto-cjk desktop-file-utils
+            fonts-noto-core fonts-noto-cjk desktop-file-utils libglib2.0-bin
         ;;
     rpm)
         dnf -y --setopt=install_weak_deps=False install python3-gobject-base gobject-introspection at-spi2-core xorg-x11-server-Xvfb \

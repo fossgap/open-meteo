@@ -16,12 +16,16 @@ runs. The checks cover:
 - Real GTK controls under Xvfb and a private D-Bus session: theme changes, units,
   search states, narrow layout, daily details, tray menus/hiding/restoration/loss,
   first launch, offline cache, preferences, and quit.
-- Temperature-icon updates, GNOME bridge attach/detach/crash recovery, all six
-  translations at wide and narrow sizes, and language selection/persistence.
+- Weather-symbol retention during temperature updates, GNOME bridge
+  attach/detach/crash recovery, all six translations at wide and narrow sizes,
+  and language selection/persistence.
+- GNOME setup against a private D-Bus service and settings: immediate activation,
+  first-install scheduling, repeated setup, updates, and failure states. The same
+  checks run for source builds, AppImages, and installed native packages.
 - A separate [GNOME Clock CI](../.github/workflows/gnome-ci.yml) runs GNOME 50 in
   an isolated Fedora 44 container: clock placement, forecast actions, unit and
-  saved-weather updates, app restarts, and extension disable/re-enable. The
-  host desktop and installed extensions are untouched.
+  saved-weather updates, app restarts, and immediate enablement over GNOME's
+  public D-Bus interface. The host desktop and installed extensions are untouched.
 
 The native tests use synthetic weather, temporary settings, mock desktop services,
 and a refused local proxy. They do not require the weather API. Live API testing

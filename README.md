@@ -34,8 +34,9 @@ A [FOSSGap](https://github.com/fossgap) project and independent desktop client; 
   details, including sunrise, sunset, and maximum wind.
 - **Location search:** cities and postal codes, with the five most recent places
   remembered. Your location is never detected automatically.
-- **Temperature in the panel:** a temperature icon on StatusNotifier desktops,
-  with hourly and weekly forecasts, refresh, open, and quit actions.
+- **Weather in the panel:** the weather condition icon with a temperature badge
+  on StatusNotifier desktops, plus hourly and weekly forecasts, refresh, open,
+  and quit actions. Both remain visible in the tray's square icon slot.
 - **GNOME clock:** the bundled Open Meteo Clock extension places the weather icon
   and temperature beside the system clock, with forecast actions in its menu.
 - **Offline support:** the last successful forecast for each location is saved.
@@ -118,7 +119,8 @@ connection disappears while the window is hidden, the window reopens.
 
 ### GNOME system clock
 
-Open **Main menu → GNOME clock setup → Install extension**, or run:
+Choose **Main menu → GNOME clock setup** to install and enable the integration
+in one action, or run:
 
 ```sh
 open-meteo --install-gnome-extension
@@ -126,12 +128,18 @@ open-meteo --install-gnome-extension
 # ./Open_Meteo-0.1.0-x86_64.AppImage --install-gnome-extension
 ```
 
-Log out and back in after the first installation, then enable **Open Meteo Clock**
-in GNOME Extensions, or run:
+If GNOME already knows the extension, setup enables it immediately and checks
+that it started. There is no separate command or Extensions toggle to find.
 
-```sh
-gnome-extensions enable open-meteo-clock@fossgap.github.io
-```
+For a **new local installation**, GNOME may not have discovered the extension
+yet. Setup detects this and saves its enabled state for the next session. Only
+in that case, sign out and back in on Wayland, or restart GNOME Shell with
+**Alt+F2 → `r`** on X11; it then enables automatically. GNOME loads local
+extensions at Shell startup and caches their JavaScript modules ([GNOME's
+extension guide](https://gjs.guide/extensions/development/creating.html#testing-the-extension)).
+An updated extension may also need a new Shell session to load its new code.
+The app never restarts your session or changes the global extension switch.
+Setup reports disabled extensions or unsupported Shell versions separately.
 
 Launch Open Meteo and select a location. The extension shows the weather directly
 beside the existing clock, as in the reference layout. Click the clock to find
@@ -291,18 +299,20 @@ See [CI and releases](docs/ci-release.md) to reproduce the installation matrix.
 The native UI smoke test needs Python's PyGObject and AT-SPI bindings, Xvfb,
 `dbus-run-session`, `xdotool`, `xwininfo`, and ImageMagick's `import` command. On
 Debian/Ubuntu, install `python3-gi gir1.2-atspi-2.0 at-spi2-core xvfb dbus-x11
-xdotool x11-utils imagemagick`, then run:
+xdotool x11-utils imagemagick libglib2.0-bin`, then run:
 
 ```sh
 cargo build --locked
-dbus-run-session -- xvfb-run -a -s '-screen 0 1280x1200x24' \
-  /usr/bin/python3 tests/ui_smoke.py
+sh scripts/check-ui.sh
 ```
 
 This test uses temporary settings, sample data, a mock desktop settings/tray
 service, and a refused local proxy. It exercises native controls, theme changes,
 search, unit persistence, offline fallback, tray hiding/restoration, and tray
-loss. Screenshots and logs go to `.impeccable/review/` (gitignored).
+loss, and retention of the condition icon when tray temperatures change. The
+same command tests GNOME setup with a private session bus: immediate activation,
+first-install scheduling, repeat setup, updates, and disabled/broken extensions.
+Screenshots and logs go to `.impeccable/review/` (gitignored).
 Set `OPEN_METEO_TEST_BINARY` to test a packaged executable and
 `OPEN_METEO_TEST_OUTPUT_DIR` to keep its captures separate. For an AppImage on a
 FUSE-less host, also set `APPIMAGE_EXTRACT_AND_RUN=1`.

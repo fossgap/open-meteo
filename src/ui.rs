@@ -283,20 +283,33 @@ pub fn build(app: &adw::Application, demo: bool) {
     app.add_action(&language_action);
     let setup = gio::SimpleAction::new("clock-setup", None);
     let this = ui.clone();
-    setup.connect_activate(move |_, _| {
-        let dialog = adw::MessageDialog::new(Some(&this.window), Some(&tr("GNOME clock setup")),
-            Some(&tr("Install the bundled Open Meteo Clock extension, then enable it in GNOME Extensions. See the README for installation commands. The app must be running to show the temperature.")));
-        dialog.add_response("close", &tr("Close"));
-        dialog.add_response("install", &tr("Install extension"));
-        dialog.set_response_appearance("install", adw::ResponseAppearance::Suggested);
+    setup.connect_activate(move |action, _| {
+        action.set_enabled(false);
+        this.toast("Setting up the GNOME clock…");
+        let action = action.clone();
         let ui = this.clone();
-        dialog.connect_response(Some("install"), move |_, _| {
-            match crate::desktop::install_extension() {
-                Ok(_) => ui.toast("Extension installed. Log out and back in, then enable Open Meteo Clock in GNOME Extensions."),
-                Err(error) => ui.toast(&tf("Could not install the extension: {error}", &[("error", &error.to_string())])),
-            }
+        glib::MainContext::default().spawn_local(async move {
+            let result = crate::gnome_setup::setup().await;
+            action.set_enabled(true);
+            let message = match result {
+                Ok(crate::gnome_setup::Outcome::Enabled) => {
+                    ui.toast("GNOME clock integration is enabled.");
+                    return;
+                }
+                Ok(outcome) => outcome.message(),
+                Err(error) => tf(
+                    "Could not set up the GNOME clock: {error}",
+                    &[("error", &error)],
+                ),
+            };
+            let dialog = adw::MessageDialog::new(
+                Some(&ui.window),
+                Some(&tr("GNOME clock setup")),
+                Some(&message),
+            );
+            dialog.add_response("close", &tr("Close"));
+            dialog.present();
         });
-        dialog.present();
     });
     app.add_action(&setup);
     let this = ui.clone();
@@ -668,11 +681,13 @@ impl Ui {
             );
         }
         if let Some(handle) = &state.tray {
+            let icons = tray::panel_icons(state.saved.as_ref(), state.prefs.units);
             handle.update(|tray| {
                 tray.saved = state.saved.clone();
                 tray.units = state.prefs.units;
                 tray.stale = state.stale;
                 tray.clock_active = self.clock_online.get();
+                tray.icons = icons;
             });
         }
     }

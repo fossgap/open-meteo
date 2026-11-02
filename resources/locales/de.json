@@ -40,7 +40,6 @@
   "System language": "Systemsprache",
   "Language saved. Quit and reopen Open Meteo to apply it.": "Sprache gespeichert. Beenden und öffnen Sie Open Meteo erneut.",
   "GNOME clock setup": "GNOME-Uhr einrichten",
-  "Install the bundled Open Meteo Clock extension, then enable it in GNOME Extensions. See the README for installation commands. The app must be running to show the temperature.": "Installieren Sie die mitgelieferte Erweiterung Open Meteo Clock und aktivieren Sie sie in GNOME-Erweiterungen. Die Befehle stehen in der README. Die App muss laufen, um die Temperatur anzuzeigen.",
   "Close": "Schließen",
   "Temperature in {unit}": "Temperatur in {unit}",
   "Celsius": "Celsius",
@@ -136,7 +135,14 @@
   "The forecast contains invalid dates. Try refreshing.": "Die Vorhersage enthält ungültige Daten. Bitte aktualisieren.",
   "A native Linux weather app.": "Eine native Wetter-App für Linux.",
   "Forecasts by Open-Meteo, location data by GeoNames. An independent client, not affiliated with the Open-Meteo service.": "Vorhersagen von Open-Meteo, Ortsdaten von GeoNames. Ein unabhängiger Client ohne Verbindung zum Open-Meteo-Dienst.",
-  "Install extension": "Erweiterung installieren",
-  "Extension installed. Log out and back in, then enable Open Meteo Clock in GNOME Extensions.": "Erweiterung installiert. Melden Sie sich ab und wieder an, und aktivieren Sie Open Meteo Clock in GNOME-Erweiterungen.",
-  "Could not install the extension: {error}": "Erweiterung konnte nicht installiert werden: {error}"
+  "Setting up the GNOME clock…": "GNOME-Uhr wird eingerichtet…",
+  "Open Meteo Clock is ready for your next GNOME session. GNOME has not discovered the new extension yet. On Wayland, sign out and back in once; on X11, restart GNOME Shell. It will enable automatically.": "Open Meteo Clock ist für Ihre nächste GNOME-Sitzung bereit. GNOME hat die neue Erweiterung noch nicht erkannt. Melden Sie sich unter Wayland einmal ab und wieder an; starten Sie unter X11 die GNOME Shell neu. Die Erweiterung wird automatisch aktiviert.",
+  "The clock extension has been updated. GNOME will load it the next time you sign in. It will enable automatically.": "Die Uhr-Erweiterung wurde aktualisiert. GNOME lädt sie bei Ihrer nächsten Anmeldung. Sie wird automatisch aktiviert.",
+  "Extension installed. Run clock setup from a GNOME session to enable it.": "Erweiterung installiert. Richten Sie die Uhr in einer GNOME-Sitzung ein, um sie zu aktivieren.",
+  "GNOME's extension settings are unavailable.": "Die GNOME-Erweiterungseinstellungen sind nicht verfügbar.",
+  "This GNOME Shell version is not supported by the bundled extension.": "Diese Version der GNOME Shell wird von der mitgelieferten Erweiterung nicht unterstützt.",
+  "GNOME extensions are switched off. Turn them on in Extensions, then run clock setup again.": "GNOME-Erweiterungen sind ausgeschaltet. Schalten Sie sie in Erweiterungen ein und richten Sie die Uhr erneut ein.",
+  "GNOME did not enable the extension. Check Open Meteo Clock in Extensions for details.": "GNOME hat die Erweiterung nicht aktiviert. Prüfen Sie Open Meteo Clock in Erweiterungen für weitere Informationen.",
+  "Could not set up the GNOME clock: {error}": "Die GNOME-Uhr konnte nicht eingerichtet werden: {error}",
+  "GNOME clock integration is enabled.": "Die Integration in die GNOME-Uhr ist aktiviert."
 }

@@ -40,7 +40,6 @@
   "System language": "系统语言",
   "Language saved. Quit and reopen Open Meteo to apply it.": "语言已保存。退出并重新打开 Open Meteo 后生效。",
   "GNOME clock setup": "设置 GNOME 时钟",
-  "Install the bundled Open Meteo Clock extension, then enable it in GNOME Extensions. See the README for installation commands. The app must be running to show the temperature.": "安装随附的 Open Meteo Clock 扩展，然后在 GNOME 扩展中启用。安装命令见 README。应用运行时才会显示温度。",
   "Close": "关闭",
   "Temperature in {unit}": "温度单位：{unit}",
   "Celsius": "摄氏度",
@@ -136,7 +135,14 @@
   "The forecast contains invalid dates. Try refreshing.": "预报包含无效日期。请刷新。",
   "A native Linux weather app.": "原生 Linux 天气应用。",
   "Forecasts by Open-Meteo, location data by GeoNames. An independent client, not affiliated with the Open-Meteo service.": "预报来自 Open-Meteo，地理数据来自 GeoNames。本应用为独立客户端，与 Open-Meteo 服务无隶属关系。",
-  "Install extension": "安装扩展",
-  "Extension installed. Log out and back in, then enable Open Meteo Clock in GNOME Extensions.": "扩展已安装。注销并重新登录，然后在 GNOME 扩展中启用 Open Meteo Clock。",
-  "Could not install the extension: {error}": "无法安装扩展：{error}"
+  "Setting up the GNOME clock…": "正在设置 GNOME 时钟…",
+  "Open Meteo Clock is ready for your next GNOME session. GNOME has not discovered the new extension yet. On Wayland, sign out and back in once; on X11, restart GNOME Shell. It will enable automatically.": "Open Meteo Clock 已准备就绪，将在下次 GNOME 会话中启用。GNOME 尚未发现新扩展。在 Wayland 下，请注销并重新登录一次；在 X11 下，请重启 GNOME Shell。扩展将自动启用。",
+  "The clock extension has been updated. GNOME will load it the next time you sign in. It will enable automatically.": "时钟扩展已更新。GNOME 将在您下次登录时加载并自动启用它。",
+  "Extension installed. Run clock setup from a GNOME session to enable it.": "扩展已安装。请在 GNOME 会话中运行时钟设置以启用它。",
+  "GNOME's extension settings are unavailable.": "GNOME 扩展设置不可用。",
+  "This GNOME Shell version is not supported by the bundled extension.": "随附的扩展不支持此 GNOME Shell 版本。",
+  "GNOME extensions are switched off. Turn them on in Extensions, then run clock setup again.": "GNOME 扩展已关闭。请在“扩展”中将其开启，然后重新运行时钟设置。",
+  "GNOME did not enable the extension. Check Open Meteo Clock in Extensions for details.": "GNOME 未能启用扩展。请在“扩展”中查看 Open Meteo Clock 的详细信息。",
+  "Could not set up the GNOME clock: {error}": "无法设置 GNOME 时钟：{error}",
+  "GNOME clock integration is enabled.": "GNOME 时钟集成已启用。"
 }

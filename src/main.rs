@@ -1,6 +1,7 @@
 mod api;
 mod components;
 mod desktop;
+mod gnome_setup;
 mod i18n;
 mod model;
 mod storage;
@@ -15,23 +16,32 @@ const APP_ID: &str = "io.github.open_meteo.OpenMeteo";
 fn main() -> glib::ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args == ["--install-gnome-extension"] {
-        return match desktop::install_extension() {
-            Ok(path) => {
-                println!(
-                    "Installed Open Meteo Clock in {}\nLog out and back in if newly installed, then run:\n  gnome-extensions enable open-meteo-clock@fossgap.github.io",
-                    path.display()
-                );
+        i18n::init(
+            &storage::Store::new()
+                .preferences()
+                .unwrap_or_default()
+                .language,
+        );
+        return match glib::MainContext::default().block_on(gnome_setup::setup()) {
+            Ok(outcome) => {
+                println!("{}", outcome.message());
                 glib::ExitCode::SUCCESS
             }
             Err(error) => {
-                eprintln!("Could not install GNOME extension: {error}");
+                eprintln!(
+                    "{}",
+                    i18n::tf(
+                        "Could not set up the GNOME clock: {error}",
+                        &[("error", &error)]
+                    )
+                );
                 glib::ExitCode::FAILURE
             }
         };
     }
     if args.iter().any(|a| a == "--help" || a == "-h") {
         println!(
-            "Open Meteo {}\n\nUsage: open-meteo [--demo | --check-api | --version | --install-gnome-extension]\n\n  --demo       Preview with clearly labelled sample weather; no network or saved settings\n  --check-api  Check live location search and forecast access, then exit\n  --version    Print the version\n  --install-gnome-extension  Install Open Meteo Clock for the current user",
+            "Open Meteo {}\n\nUsage: open-meteo [--demo | --check-api | --version | --install-gnome-extension]\n\n  --demo       Preview with clearly labelled sample weather; no network or saved settings\n  --check-api  Check live location search and forecast access, then exit\n  --version    Print the version\n  --install-gnome-extension  Install and enable Open Meteo Clock for the current user",
             env!("CARGO_PKG_VERSION")
         );
         return glib::ExitCode::SUCCESS;

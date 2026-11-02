@@ -28,6 +28,17 @@ async function until(predicate, message) {
     throw new Error(`Timed out: ${message}`);
 }
 
+function shellCall(method) {
+    return new Promise((resolve, reject) => {
+        Gio.DBus.session.call('org.gnome.Shell', '/org/gnome/Shell', 'org.gnome.Shell.Extensions',
+            method, new GLib.Variant('(s)', [UUID]), null, Gio.DBusCallFlags.NO_AUTO_START, 3000,
+            null, (connection, result) => {
+                try { resolve(connection.call_finish(result).deep_unpack()[0]); }
+                catch (error) { reject(error); }
+            });
+    });
+}
+
 export async function run() {
     await until(() => Main.extensionManager.lookup(UUID)?.stateObj?._box, 'extension enabled');
     const extension = Main.extensionManager.lookup(UUID).stateObj;
@@ -47,6 +58,8 @@ export async function run() {
     service.export(Gio.DBus.session, PATH);
     let owner = Gio.bus_own_name_on_connection(Gio.DBus.session, BUS, Gio.BusNameOwnerFlags.NONE, null, null);
     await until(() => extension._temperature.text === '11°C', 'clock temperature');
+    assert(extension._icon.icon_name === 'weather-overcast-symbolic' && extension._icon.visible,
+        'Weather symbol must remain visible beside the temperature');
     assert(attached === 1, 'Extension must attach once');
     assert(parent.get_children().indexOf(extension._box) + 1 === parent.get_children().indexOf(clock), 'Weather must be immediately beside the original clock');
     assert(clock.text.length > 0, 'Native clock text must remain visible');
@@ -65,9 +78,11 @@ export async function run() {
     extension._refresh.activate(null);
     await until(() => shown === 1 && refreshed === 1, 'clock actions');
     data.temperature = '52°F';
+    data.icon = 'weather-showers-symbolic';
     data.stale = true;
     service.emit_signal('Changed', new GLib.Variant('(s)', [JSON.stringify(data)]));
     await until(() => extension._temperature.text === '~52°F', 'units and saved-weather marker');
+    assert(extension._icon.icon_name === 'weather-showers-symbolic', 'Condition changes must update the symbol');
     Gio.bus_unown_name(owner);
     await until(() => !extension._box.visible, 'app exits');
     owner = Gio.bus_own_name_on_connection(Gio.DBus.session, BUS, Gio.BusNameOwnerFlags.NONE, null, null);
@@ -78,12 +93,16 @@ export async function run() {
     assert(clock.get_parent() === parent && clock.text.length > 0, 'Disable must preserve the clock');
     // The first owner loss simulates an app restart and forgets its lease.
     await until(() => attached === 1, 'Detach on disable');
-    Main.extensionManager.enableExtension(UUID);
+    // The app uses this public API: enabling a discovered extension must work
+    // immediately without replacing the clock or restarting the Shell.
+    const info = await shellCall('GetExtensionInfo');
+    assert(info.path.get_string()[0].length > 0 && info.version.get_double() > 0, 'Installer metadata');
+    assert(await shellCall('EnableExtension'), 'EnableExtension must accept a discovered extension');
     await until(() => extension._box?.visible, 'extension re-enabled');
     assert(parent.get_n_children() === originalCount, 'Re-enable must not duplicate weather');
     Main.extensionManager.disableExtension(UUID);
     await until(() => extension._box === null, 'final cleanup');
     Gio.bus_unown_name(owner);
     service.unexport();
-    print('GNOME_CLOCK_SUITE_PASSED: placement, clock preservation, updates, stale data, actions, app restart, disable and re-enable');
+    print('GNOME_CLOCK_SUITE_PASSED: icon and temperature, placement, clock preservation, updates, stale data, actions, app restart, disable and immediate D-Bus re-enable');
 }

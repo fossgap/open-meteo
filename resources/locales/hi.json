@@ -40,7 +40,6 @@
   "System language": "सिस्टम की भाषा",
   "Language saved. Quit and reopen Open Meteo to apply it.": "भाषा सहेज ली गई। इसे लागू करने के लिए Open Meteo बंद करके दोबारा खोलें।",
   "GNOME clock setup": "GNOME घड़ी सेटअप",
-  "Install the bundled Open Meteo Clock extension, then enable it in GNOME Extensions. See the README for installation commands. The app must be running to show the temperature.": "साथ में दिया गया Open Meteo Clock एक्सटेंशन इंस्टॉल करें, फिर GNOME Extensions में सक्षम करें। कमांड README में हैं। तापमान दिखाने के लिए ऐप चालू होना चाहिए।",
   "Close": "बंद करें",
   "Temperature in {unit}": "तापमान: {unit}",
   "Celsius": "सेल्सियस",
@@ -136,7 +135,14 @@
   "The forecast contains invalid dates. Try refreshing.": "पूर्वानुमान में तारीखें अमान्य हैं। ताज़ा करें।",
   "A native Linux weather app.": "Linux के लिए मूल मौसम ऐप।",
   "Forecasts by Open-Meteo, location data by GeoNames. An independent client, not affiliated with the Open-Meteo service.": "पूर्वानुमान Open-Meteo से और स्थान डेटा GeoNames से। स्वतंत्र क्लाइंट, Open-Meteo सेवा से संबद्ध नहीं।",
-  "Install extension": "एक्सटेंशन इंस्टॉल करें",
-  "Extension installed. Log out and back in, then enable Open Meteo Clock in GNOME Extensions.": "एक्सटेंशन इंस्टॉल हो गया। लॉग आउट करके दोबारा लॉग इन करें, फिर GNOME Extensions में Open Meteo Clock सक्षम करें।",
-  "Could not install the extension: {error}": "एक्सटेंशन इंस्टॉल नहीं हो सका: {error}"
+  "Setting up the GNOME clock…": "GNOME घड़ी सेट की जा रही है…",
+  "Open Meteo Clock is ready for your next GNOME session. GNOME has not discovered the new extension yet. On Wayland, sign out and back in once; on X11, restart GNOME Shell. It will enable automatically.": "Open Meteo Clock आपके अगले GNOME सत्र के लिए तैयार है। GNOME ने अभी नया एक्सटेंशन नहीं पहचाना है। Wayland पर एक बार साइन आउट करके फिर साइन इन करें; X11 पर GNOME Shell पुनः शुरू करें। एक्सटेंशन अपने आप चालू हो जाएगा।",
+  "The clock extension has been updated. GNOME will load it the next time you sign in. It will enable automatically.": "घड़ी का एक्सटेंशन अपडेट हो गया है। अगली बार साइन इन करने पर GNOME इसे लोड करेगा। यह अपने आप चालू हो जाएगा।",
+  "Extension installed. Run clock setup from a GNOME session to enable it.": "एक्सटेंशन इंस्टॉल हो गया है। इसे चालू करने के लिए GNOME सत्र में घड़ी सेटअप चलाएँ।",
+  "GNOME's extension settings are unavailable.": "GNOME की एक्सटेंशन सेटिंग उपलब्ध नहीं हैं।",
+  "This GNOME Shell version is not supported by the bundled extension.": "यह GNOME Shell संस्करण शामिल एक्सटेंशन के साथ समर्थित नहीं है।",
+  "GNOME extensions are switched off. Turn them on in Extensions, then run clock setup again.": "GNOME एक्सटेंशन बंद हैं। उन्हें Extensions में चालू करें, फिर घड़ी सेटअप दोबारा चलाएँ।",
+  "GNOME did not enable the extension. Check Open Meteo Clock in Extensions for details.": "GNOME ने एक्सटेंशन चालू नहीं किया। अधिक जानकारी के लिए Extensions में Open Meteo Clock देखें।",
+  "Could not set up the GNOME clock: {error}": "GNOME घड़ी सेट नहीं हो सकी: {error}",
+  "GNOME clock integration is enabled.": "GNOME घड़ी का एकीकरण चालू है।"
 }
