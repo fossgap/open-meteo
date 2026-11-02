@@ -63,7 +63,7 @@ six artifacts plus `SHA256SUMS`:
 | `open-meteo-<version>.tar.gz` | Versioned source, build files, tests, docs, and workflows |
 | `PKGBUILD` | Arch source recipe containing that archive's SHA-256 |
 
-`scripts/verify-packages.py` requires this exact inventory, verifies versions,
+The Rust `verify-packages` tool in `tools/checks/` requires this exact inventory, verifies versions,
 architectures, dependency declarations, launcher/icon/docs payloads, and exact
 GNOME extension files. License metadata and bundled license texts must match the
 source, including ksni's Unlicense. The source archive must contain all translation catalogs. Native
@@ -74,7 +74,11 @@ and theme/backend hook, the source archive, and the PKGBUILD checksum before wri
 `SHA256SUMS`. The AppImage then runs the full native UI suite.
 
 The `linux-x86_64-release` Actions artifact retains the exact outputs for 14 days.
-Every installation job downloads that artifact and checks all checksums before
+The separate `linux-verification-tools` artifact carries the Rust verifier and
+desktop harness built on the same Debian 12 baseline. Installation and publication
+jobs download these tools; they are not included in the application packages or
+published downloads. Local `scripts/ci.sh release` saves them in `target/check-tools/`.
+Every installation job downloads the release artifact and checks all checksums before
 installing anything in its disposable container:
 
 | Target | Container | Package |

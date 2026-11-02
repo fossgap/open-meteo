@@ -1,0 +1,29 @@
+[package]
+name = "open-meteo-checks"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "GPL-3.0-only"
+publish = false
+
+[features]
+desktop = ["dep:gio", "dep:glib"]
+
+[dependencies]
+anyhow = "1"
+flate2 = "1"
+sha2 = "0.10"
+tar = "0.4"
+tempfile = "3"
+serde_json = "1"
+gio = { version = "0.21", optional = true }
+glib = { version = "0.21", optional = true }
+
+[[bin]]
+name = "verify-packages"
+path = "src/bin/verify-packages.rs"
+
+[[bin]]
+name = "desktop-tests"
+path = "src/bin/desktop-tests.rs"
+required-features = ["desktop"]

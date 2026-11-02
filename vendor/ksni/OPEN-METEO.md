@@ -12,5 +12,5 @@ Protocol reference:
 https://github.com/AyatanaIndicators/libayatana-appindicator/blob/master/src/notification-item.xml
 
 The label and update notifications are exercised against the real Rust service
-in `tests/tray_label.py`. Remove this local copy when upstream provides the same
+in `tools/checks/src/desktop/tray.rs`. Remove this local copy when upstream provides the same
 extension, keeping that integration test.

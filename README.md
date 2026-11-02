@@ -275,9 +275,7 @@ ignored. Removing the app's directories resets its saved state.
 ## Development
 
 ```sh
-cargo fmt --check
-cargo clippy --locked --all-targets -- -D warnings
-cargo test --locked
+make check
 
 # Optional live check: queries Paris and validates the returned forecast.
 cargo run --locked -- --check-api
@@ -303,9 +301,9 @@ sh scripts/ci.sh release
 
 See [CI and releases](docs/ci-release.md) to reproduce the installation matrix.
 
-The native UI smoke test needs Python's PyGObject and AT-SPI bindings, Xvfb,
+The Rust native UI checks use GLib/GIO and the AT-SPI accessibility bus, Xvfb,
 `dbus-run-session`, `xdotool`, `xwininfo`, and ImageMagick's `import` command. On
-Debian/Ubuntu, install `python3-gi gir1.2-atspi-2.0 at-spi2-core xvfb dbus-x11
+Debian/Ubuntu, install `at-spi2-core xvfb dbus-x11
 xdotool x11-utils imagemagick libglib2.0-bin`, then run:
 
 ```sh
@@ -319,10 +317,16 @@ search, unit persistence, offline fallback, tray hiding/restoration, and tray
 loss, and retention of the condition icon when tray temperatures change. The
 same command tests GNOME setup with a private session bus: immediate activation,
 first-install scheduling, repeat setup, updates, and disabled/broken extensions.
-Screenshots and logs go to `.impeccable/review/` (gitignored).
+The scripts build the Rust harness in `tools/checks/` automatically. Screenshots
+and logs go to `target/ci/ui-smoke/` (gitignored).
 Set `OPEN_METEO_TEST_BINARY` to test a packaged executable and
 `OPEN_METEO_TEST_OUTPUT_DIR` to keep its captures separate. For an AppImage on a
 FUSE-less host, also set `APPIMAGE_EXTRACT_AND_RUN=1`.
+
+Run package-integrity regression tests with `cargo test --locked -p open-meteo-checks`.
+`sh scripts/verify-packages.sh dist/release` builds and runs the Rust release
+verifier. CI passes prebuilt tools through `OPEN_METEO_CHECK_TOOLS_DIR`, so
+installation containers need no Rust compiler or language bindings.
 
 With `xfce4-panel` and `xfconf` installed, `sh scripts/check-tray.sh` also checks
 the actual panel layout in light and dark themes: one button containing the

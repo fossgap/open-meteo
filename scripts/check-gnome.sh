@@ -14,14 +14,7 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 mkdir -m700 "$test_root/runtime"
-python3 - "$test_root/extension.zip" <<'PY'
-from pathlib import Path
-import sys
-import zipfile
-with zipfile.ZipFile(sys.argv[1], 'w') as archive:
-    for path in Path('resources/gnome-extension').iterdir():
-        archive.write(path, path.name)
-PY
+(cd resources/gnome-extension && zip -q "$test_root/extension.zip" ./*)
 export XDG_RUNTIME_DIR="$test_root/runtime" LIBGL_ALWAYS_SOFTWARE=1 ATSPI_DBUS_IMPLEMENTATION=dbus-daemon
 export OPEN_METEO_GNOME_SCREENSHOT="$PWD/target/ci/gnome-clock.png"
 export OPEN_METEO_GNOME_INDICATOR_SCREENSHOT="$PWD/target/ci/gnome-indicator.png"
@@ -33,17 +26,9 @@ timeout 120s dbus-run-session -- sh -c '
     export DBUS_SYSTEM_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS"
     exec gnome-shell-test-tool --headless --disable-animations --extension "$1" "$2"
 ' sh "$test_root/extension.zip" "$PWD/tests/gnome_clock.js"
-python3 - "$test_root/indicator.zip" <<'PY'
-from pathlib import Path
-import sys
-import zipfile
-root = Path('/usr/share/gnome-shell/extensions/appindicatorsupport@rgcjonas.gmail.com')
-assert root.is_dir(), 'Install gnome-shell-extension-appindicator in the test image'
-with zipfile.ZipFile(sys.argv[1], 'w') as archive:
-    for source in root.rglob('*'):
-        if source.is_file():
-            archive.write(source, str(source.relative_to(root)))
-PY
+indicator_root=/usr/share/gnome-shell/extensions/appindicatorsupport@rgcjonas.gmail.com
+test -d "$indicator_root"
+(cd "$indicator_root" && zip -qr "$test_root/indicator.zip" .)
 # shellcheck disable=SC2016
 timeout 120s dbus-run-session -- sh -c '
     export DBUS_SYSTEM_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS"

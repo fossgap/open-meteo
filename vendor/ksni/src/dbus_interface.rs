@@ -319,12 +319,18 @@ impl<T: Tray> StatusNotifierItem<T> {
 
     #[zbus(property, name = "XAyatanaLabel")]
     async fn label(&self) -> zbus::fdo::Result<String> {
-        Ok(self.0.lock_state(false, async |state| state.get_label()).await)
+        Ok(self
+            .0
+            .lock_state(false, async |state| state.get_label())
+            .await)
     }
 
     #[zbus(property, name = "XAyatanaLabelGuide")]
     async fn label_guide(&self) -> zbus::fdo::Result<String> {
-        Ok(self.0.lock_state(false, async |state| state.get_label_guide()).await)
+        Ok(self
+            .0
+            .lock_state(false, async |state| state.get_label_guide())
+            .await)
     }
 
     #[zbus(property)]

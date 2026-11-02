@@ -3,7 +3,7 @@ FROM rust:1.90-bookworm
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential pkg-config libgtk-4-dev libadwaita-1-dev \
     libgirepository1.0-dev librsvg2-dev \
-    python3 python3-gi gir1.2-atspi-2.0 at-spi2-core \
+    at-spi2-core \
     xvfb xauth dbus-x11 xdotool x11-utils imagemagick fonts-dejavu-core fonts-noto-core fonts-noto-cjk \
     shared-mime-info fontconfig-config dconf-gsettings-backend \
     xfce4-panel xfconf \
@@ -15,9 +15,14 @@ ENV CARGO_BUILD_JOBS=2 LC_ALL=C.UTF-8
 WORKDIR /workspace
 COPY Cargo.toml Cargo.lock ./
 COPY vendor ./vendor
+COPY tools ./tools
+COPY LICENSE ./
+COPY packaging/copyright ./packaging/copyright
 COPY src ./src
 COPY resources ./resources
 COPY tests/fixtures ./tests/fixtures
-RUN cargo build --locked && cargo test --locked && cargo clippy --locked --all-targets -- -D warnings
+RUN cargo build --locked --workspace --features open-meteo-checks/desktop \
+    && cargo test --locked --workspace --features open-meteo-checks/desktop \
+    && cargo clippy --locked --workspace --all-targets --features open-meteo-checks/desktop -- -D warnings
 COPY . .
 CMD ["sh", "scripts/ci-inside.sh", "check"]

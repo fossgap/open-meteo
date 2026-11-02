@@ -63,6 +63,14 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Retain Rust verification tools
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux-verification-tools
+          path: target/check-tools/
+          if-no-files-found: error
+          retention-days: 14
+
   verify-packages:
     name: Verify packages (${{ matrix.target }})
     needs: build
@@ -82,12 +90,19 @@ jobs:
         with:
           name: linux-x86_64-release
           path: dist/release
+      - name: Download Rust verification tools
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: linux-verification-tools
+          path: target/check-tools
       - name: Install packages and verify the native interface
         shell: bash
         env:
           PACKAGE_TARGET: ${{ matrix.target }}
+          OPEN_METEO_CHECK_TOOLS_DIR: ${{ github.workspace }}/target/check-tools
         run: |
           set -o pipefail
+          chmod +x target/check-tools/*
           mkdir -p target/package-installation
           sh scripts/check-package-installation.sh "$PACKAGE_TARGET" dist/release 2>&1 \
             | tee "target/package-installation/$PACKAGE_TARGET.log"
@@ -117,8 +132,17 @@ jobs:
         with:
           name: linux-x86_64-release
           path: dist/release
+      - name: Download Rust checksum verifier
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: linux-verification-tools
+          path: target/check-tools
       - name: Verify exact release inventory and checksums
-        run: python3 scripts/verify-packages.py --checksums-only dist/release
+        env:
+          OPEN_METEO_CHECK_TOOLS_DIR: ${{ github.workspace }}/target/check-tools
+        run: |
+          chmod +x target/check-tools/*
+          sh scripts/verify-packages.sh --checksums-only dist/release
       - name: Publish the versioned release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

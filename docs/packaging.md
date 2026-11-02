@@ -79,16 +79,19 @@ If all release assets are present, run `sha256sum -c SHA256SUMS`.
 For a full release produced by `sh scripts/ci.sh release`:
 
 ```sh
-python3 scripts/verify-packages.py --checksums-only dist/release
+sh scripts/verify-packages.sh --checksums-only dist/release
 make check-packages
 sh scripts/check-package-installation.sh debian dist/release
 ```
 
-The full verifier needs Python 3, `dpkg-deb`, `rpm`, `rpm2cpio`, `cpio`, `zstd`, `objcopy` (`binutils`), and
+The Rust verifier builds automatically through the wrapper script, or uses
+prebuilt tools from `OPEN_METEO_CHECK_TOOLS_DIR`. Full verification also needs
+`dpkg-deb`, `rpm`, `rpm2cpio`, `cpio`, `zstd`, `objcopy` (`binutils`), and
 `desktop-file-validate`. It checks complete contents, package metadata, and matching
 executables, and extracts the AppImage in a temporary directory without FUSE.
 Use it only for locally built or trusted release artifacts because AppImage
-extraction executes its runtime. The checksum-only mode requires only Python.
+extraction executes its runtime. The checksum-only mode needs no extraction tools
+or graphical libraries.
 
 Installation checks run only in disposable containers. Available targets are
 `debian`, `kali`, `fedora`, `arch`, and `appimage`; see the

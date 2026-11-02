@@ -17,7 +17,9 @@ case "$target" in
 esac
 [ "$(uname -m)" = x86_64 ] || { echo 'Release installation checks require x86_64.' >&2; exit 1; }
 artifacts=$(realpath "${2:-dist/release}")
-python3 scripts/verify-packages.py --checksums-only "$artifacts"
+check_tools=$(realpath "${OPEN_METEO_CHECK_TOOLS_DIR:-target/check-tools}")
+test -x "$check_tools/desktop-tests"
+OPEN_METEO_CHECK_TOOLS_DIR="$check_tools" sh scripts/verify-packages.sh --checksums-only "$artifacts"
 version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)
 results_dir="$PWD/target/package-installation/$target"
 mkdir -p "$results_dir"
@@ -28,6 +30,8 @@ docker image inspect "$image" --format '{{json .RepoTags}} {{json .RepoDigests}}
 container=$(docker create --tmpfs /tmp:rw,exec --shm-size=1g \
     --env OPEN_METEO_INSTALL_TEST_CONTAINER=1 --env DEBIAN_FRONTEND=noninteractive \
     --env OPEN_METEO_TEST_UID="$test_uid" \
+    --env OPEN_METEO_CHECK_TOOLS_DIR=/tools \
+    --volume "$check_tools:/tools:ro" \
     --volume "$artifacts:/artifacts:ro" \
     --volume "$PWD/scripts:/workspace/scripts:ro" \
     --volume "$PWD/tests:/workspace/tests:ro" \

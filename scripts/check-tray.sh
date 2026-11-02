@@ -2,6 +2,8 @@
 # A real XFCE StatusNotifier host in a disposable display, bus and settings tree.
 set -eu
 cd "$(dirname "$0")/.."
+. scripts/check-tools.sh
+export OPEN_METEO_TEST_SESSION=1
 command -v xfce4-panel >/dev/null
 test_runtime=
 cleanup() {
@@ -20,11 +22,11 @@ for theme in Adwaita Adwaita:dark; do
     test_runtime=$(mktemp -d "${TMPDIR:-/tmp}/open-meteo-tray-runtime.XXXXXX")
     export XDG_RUNTIME_DIR="$test_runtime" OPEN_METEO_PANEL_THEME="$theme"
     timeout 90s dbus-run-session -- xvfb-run -a -s '-screen 0 960x1100x24' \
-        "${PYTHON:-/usr/bin/python3}" tests/tray_panel.py
+        "$OPEN_METEO_CHECK_TOOLS_DIR/desktop-tests" tray-panel
     cleanup
     test_runtime=
 done
 test_runtime=$(mktemp -d "${TMPDIR:-/tmp}/open-meteo-tray-runtime.XXXXXX")
 export XDG_RUNTIME_DIR="$test_runtime"
 timeout 90s dbus-run-session -- xvfb-run -a -s '-screen 0 960x1100x24' \
-    "${PYTHON:-/usr/bin/python3}" tests/tray_label.py
+    "$OPEN_METEO_CHECK_TOOLS_DIR/desktop-tests" tray-label

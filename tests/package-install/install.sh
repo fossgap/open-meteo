@@ -60,17 +60,17 @@ fi
 case "$format" in
     deb|appimage)
         apt-get update
-        apt-get -y --no-install-recommends install python3-gi gir1.2-atspi-2.0 at-spi2-core \
+        apt-get -y --no-install-recommends install at-spi2-core \
             xvfb xauth dbus-x11 xdotool x11-utils imagemagick fonts-dejavu-core \
             fonts-noto-core fonts-noto-cjk desktop-file-utils libglib2.0-bin
         ;;
     rpm)
-        dnf -y --setopt=install_weak_deps=False install python3-gobject-base gobject-introspection at-spi2-core xorg-x11-server-Xvfb \
+        dnf -y --setopt=install_weak_deps=False install at-spi2-core xorg-x11-server-Xvfb \
             xorg-x11-xauth dbus-daemon xdotool xwininfo ImageMagick dejavu-sans-fonts \
             google-noto-sans-arabic-fonts google-noto-sans-devanagari-fonts google-noto-sans-cjk-fonts desktop-file-utils
         ;;
     arch)
-        pacman --noconfirm -S --needed python-gobject at-spi2-core xorg-server-xvfb \
+        pacman --noconfirm -S --needed at-spi2-core xorg-server-xvfb \
             xorg-xauth dbus xdotool xorg-xwininfo imagemagick ttf-dejavu noto-fonts noto-fonts-cjk desktop-file-utils
         ;;
 esac

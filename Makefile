@@ -10,18 +10,18 @@ build:
 	cargo build --release --locked
 
 test:
-	cargo test --locked
+	cargo test --locked --workspace --features open-meteo-checks/desktop
 
 check:
-	cargo fmt --check
-	cargo clippy --locked --all-targets -- -D warnings
-	cargo test --locked
+	cargo fmt --all --check
+	cargo clippy --locked --workspace --all-targets --features open-meteo-checks/desktop -- -D warnings
+	cargo test --locked --workspace --features open-meteo-checks/desktop
 
 check-ui:
 	sh scripts/check-ui.sh
 
 check-packages:
-	python3 scripts/verify-packages.py dist/release
+	sh scripts/verify-packages.sh dist/release
 
 install:
 	install -Dm755 target/release/open-meteo "$(DESTDIR)$(PREFIX)/bin/open-meteo"

@@ -8,6 +8,12 @@ license = "GPL-3.0-only"
 repository = "https://github.com/fossgap/open-meteo"
 homepage = "https://github.com/fossgap/open-meteo"
 
+[workspace]
+members = ["tools/checks"]
+exclude = ["vendor/ksni"]
+default-members = ["."]
+resolver = "3"
+
 [dependencies]
 adw = { package = "libadwaita", version = "0.8", features = ["v1_2"] }
 gtk = { package = "gtk4", version = "0.10", features = ["v4_8"] }

@@ -30,5 +30,9 @@ docker cp "$container:/workspace/target/ci/." target/ci/ 2>/dev/null || true
 if [ "$mode" = release ]; then
     mkdir -p "$output"
     docker cp "$container:/workspace/dist/release/." "$output/"
-    python3 scripts/verify-packages.py --checksums-only "$output"
+    mkdir -p target/check-tools
+    for tool in verify-packages desktop-tests; do
+        docker cp "$container:/workspace/target/release/$tool" "target/check-tools/$tool"
+    done
+    OPEN_METEO_CHECK_TOOLS_DIR="$PWD/target/check-tools" sh scripts/verify-packages.sh --checksums-only "$output"
 fi
