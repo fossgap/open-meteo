@@ -54,7 +54,7 @@ in one action, or run:
 ```sh
 open-meteo --install-gnome-extension
 # For an AppImage, use its filename instead:
-# ./Open_Meteo-0.2.0-x86_64.AppImage --install-gnome-extension
+# ./Open_Meteo-0.2.1-x86_64.AppImage --install-gnome-extension
 ```
 
 If GNOME already knows the extension, setup enables it immediately and checks

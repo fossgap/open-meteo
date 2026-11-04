@@ -110,8 +110,8 @@ Update the Cargo version and lockfile, commit the intended release, then push a
 matching tag. The packaging script derives artifact/PKGBUILD versions from Cargo.
 
 ```sh
-git tag -a v0.2.0 -m 'Open Meteo 0.2.0'
-git push origin v0.2.0
+git tag -a v0.2.1 -m 'Open Meteo 0.2.1'
+git push origin v0.2.1
 ```
 
 Mismatched tags fail before the container build. A separate publication job runs

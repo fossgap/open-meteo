@@ -60,7 +60,7 @@ Ubuntu 24.04; this does not establish compatibility with every Linux distributio
 To run without FUSE:
 
 ```sh
-APPIMAGE_EXTRACT_AND_RUN=1 ./Open_Meteo-0.2.0-x86_64.AppImage
+APPIMAGE_EXTRACT_AND_RUN=1 ./Open_Meteo-0.2.1-x86_64.AppImage
 ```
 
 ## Verify downloads
@@ -69,7 +69,7 @@ Download `SHA256SUMS` with the chosen package. For example, when only the DEB wa
 downloaded, select its exact manifest entry and check it:
 
 ```sh
-grep '  open-meteo_0.2.0_amd64.deb$' SHA256SUMS | sha256sum -c -
+grep '  open-meteo_0.2.1_amd64.deb$' SHA256SUMS | sha256sum -c -
 ```
 
 Use the version/filename you actually downloaded. A successful hash check verifies
