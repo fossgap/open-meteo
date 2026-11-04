@@ -1,4 +1,7 @@
-use crate::model::{Forecast, Location, Units};
+use crate::{
+    model::{Forecast, Location, Units},
+    refresh::{DEFAULT_REFRESH_INTERVAL, REFRESH_INTERVALS},
+};
 use serde::{Deserialize, Serialize};
 use std::{
     fs, io,
@@ -13,6 +16,7 @@ pub struct Preferences {
     pub units: Units,
     pub keep_in_tray: bool,
     pub language: String,
+    pub refresh_interval_minutes: u32,
 }
 
 impl Default for Preferences {
@@ -23,6 +27,7 @@ impl Default for Preferences {
             units: Units::Celsius,
             keep_in_tray: true,
             language: "system".into(),
+            refresh_interval_minutes: DEFAULT_REFRESH_INTERVAL,
         }
     }
 }
@@ -70,6 +75,9 @@ impl Store {
                 prefs.location = prefs.location.filter(Location::valid);
                 prefs.recent.retain(Location::valid);
                 prefs.recent.truncate(5);
+                if !REFRESH_INTERVALS.contains(&prefs.refresh_interval_minutes) {
+                    prefs.refresh_interval_minutes = DEFAULT_REFRESH_INTERVAL;
+                }
                 Ok(prefs)
             }
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Preferences::default()),
@@ -159,6 +167,44 @@ mod tests {
         assert_eq!(prefs.recent.len(), 5);
         assert_eq!(prefs.recent[0].latitude, 5.0);
         assert_eq!(prefs.recent[1].latitude, 7.0);
+    }
+
+    #[test]
+    fn refresh_interval_defaults_persists_and_recovers_from_unsupported_values() {
+        let dir = std::env::temp_dir().join(format!(
+            "open-meteo-refresh-preferences-test-{}",
+            std::process::id()
+        ));
+        let store = Store {
+            config: Some(dir.clone()),
+            cache: None,
+        };
+        write_json(
+            &dir.join("settings.json"),
+            &serde_json::json!({"units": "fahrenheit", "language": "fr"}),
+        )
+        .unwrap();
+        let mut prefs = store.preferences().unwrap();
+        assert_eq!(prefs.refresh_interval_minutes, 15);
+        assert_eq!(prefs.units, Units::Fahrenheit);
+        assert_eq!(prefs.language, "fr");
+        for minutes in REFRESH_INTERVALS {
+            prefs.refresh_interval_minutes = minutes;
+            store.save_preferences(&prefs).unwrap();
+            assert_eq!(
+                store.preferences().unwrap().refresh_interval_minutes,
+                minutes
+            );
+        }
+        for invalid in [1, 10, 1440, u32::MAX] {
+            prefs.refresh_interval_minutes = invalid;
+            store.save_preferences(&prefs).unwrap();
+            let restored = store.preferences().unwrap();
+            assert_eq!(restored.refresh_interval_minutes, 15);
+            assert_eq!(restored.units, Units::Fahrenheit);
+            assert_eq!(restored.language, "fr");
+        }
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

@@ -18,6 +18,7 @@ use std::sync::{
 pub enum Command {
     Show,
     Refresh,
+    RefreshIfDue,
     Quit,
 }
 

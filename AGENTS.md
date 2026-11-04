@@ -12,12 +12,12 @@ Open Meteo is a Rust 2024 Linux desktop app using GTK 4 and libadwaita.
 
 ## Build, Test, and Development Commands
 
-Install Rust 1.85+, GTK 4.8+, libadwaita 1.2+, a C toolchain, and `pkg-config`; see `README.md` for distribution commands.
+Install Rust 1.85+, GTK 4.8+, libadwaita 1.2+, a C toolchain, and `pkg-config`; see `docs/development.md` for distribution commands.
 
 - `cargo run --locked`: launch normally; append `-- --demo` for offline sample weather.
 - `make build`: build the release binary.
 - `make check`: check formatting, run Clippy with warnings denied, and execute Rust tests.
-- `cargo build --locked && make check-ui`: build and exercise native controls under Xvfb/private D-Bus; requires the README's test dependencies.
+- `cargo build --locked && make check-ui`: build and exercise native controls under Xvfb/private D-Bus; requires the test dependencies in `docs/development.md`.
 - `sh scripts/check-tray.sh`: verify the real XFCE panel and native label protocol.
 - `cargo test --locked -p open-meteo-checks`: run release-integrity tests.
 - `docker build -t open-meteo-ci . && sh scripts/ci.sh check`: reproduce container CI. Use `sh scripts/ci.sh release` to build and verify packages in a fresh output directory.

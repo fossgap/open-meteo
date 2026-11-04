@@ -3,6 +3,7 @@ use crate::{
     components::{self, clear, label},
     i18n::{self, tf, tr},
     model::{Forecast, Location, Units},
+    refresh::{REFRESH_INTERVALS, RefreshSchedule},
     storage::{Preferences, SavedForecast, Store},
     tray::{self, Command, TrayEvent, WeatherTray},
 };
@@ -16,7 +17,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         mpsc,
     },
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 enum Event {
@@ -58,6 +59,7 @@ struct Ui {
     tray_status: gtk::Label,
     tray_action: gio::SimpleAction,
     state: RefCell<State>,
+    refresh_schedule: RefCell<RefreshSchedule>,
     store: Store,
     client: Result<WeatherClient, String>,
     sender: mpsc::Sender<Event>,
@@ -126,6 +128,24 @@ pub fn build(app: &adw::Application, demo: bool) {
         Some(&tr("Keep running in system tray")),
         Some("app.keep-in-tray"),
     );
+    let intervals = gio::Menu::new();
+    for minutes in REFRESH_INTERVALS {
+        let title = if minutes == 0 {
+            tr("Manual only")
+        } else if minutes == 5 {
+            // Some languages use a different plural form for five minutes.
+            tr("Every 5 minutes")
+        } else {
+            tf(
+                "Every {minutes} minutes",
+                &[("minutes", &i18n::number(&minutes.to_string()))],
+            )
+        };
+        let item = gio::MenuItem::new(Some(&title), None);
+        item.set_action_and_target_value(Some("app.refresh-interval"), Some(&minutes.to_variant()));
+        intervals.append_item(&item);
+    }
+    menu.append_submenu(Some(&tr("Refresh interval")), &intervals);
     let languages = gio::Menu::new();
     languages.append(Some(&tr("System language")), Some("app.language::system"));
     for (code, name) in i18n::LANGUAGES {
@@ -219,6 +239,10 @@ pub fn build(app: &adw::Application, demo: bool) {
         search_results,
         tray_status: label(&tr("Checking system tray…"), "section-caption"),
         tray_action,
+        refresh_schedule: RefCell::new(RefreshSchedule::new(
+            prefs.refresh_interval_minutes,
+            Instant::now(),
+        )),
         state: RefCell::new(State {
             prefs,
             saved: None,
@@ -267,6 +291,29 @@ pub fn build(app: &adw::Application, demo: bool) {
             Err(error) => eprintln!("GNOME clock connection: {error}"),
         }
     }
+    let refresh_interval_action = gio::SimpleAction::new_stateful(
+        "refresh-interval",
+        Some(glib::VariantTy::UINT32),
+        &ui.state
+            .borrow()
+            .prefs
+            .refresh_interval_minutes
+            .to_variant(),
+    );
+    let this = ui.clone();
+    refresh_interval_action.connect_activate(move |action, parameter| {
+        let Some(minutes) = parameter.and_then(|p| p.get::<u32>()) else {
+            return;
+        };
+        if !REFRESH_INTERVALS.contains(&minutes) {
+            return;
+        }
+        this.state.borrow_mut().prefs.refresh_interval_minutes = minutes;
+        *this.refresh_schedule.borrow_mut() = RefreshSchedule::new(minutes, Instant::now());
+        action.set_state(&minutes.to_variant());
+        this.persist();
+    });
+    app.add_action(&refresh_interval_action);
     let language_action = gio::SimpleAction::new_stateful(
         "language",
         Some(glib::VariantTy::STRING),
@@ -411,14 +458,7 @@ pub fn build(app: &adw::Application, demo: bool) {
         while let Ok(event) = tray_receiver.try_recv() {
             this.receive_tray(event);
         }
-        glib::ControlFlow::Continue
-    });
-    let this = Rc::downgrade(&ui);
-    glib::timeout_add_seconds_local(15 * 60, move || {
-        let Some(this) = this.upgrade() else {
-            return glib::ControlFlow::Break;
-        };
-        this.refresh();
+        this.refresh_if_due();
         glib::ControlFlow::Continue
     });
     let this = ui.clone();
@@ -487,6 +527,12 @@ impl Ui {
         self.refresh();
     }
 
+    fn refresh_if_due(self: &Rc<Self>) {
+        if !self.demo && self.refresh_schedule.borrow_mut().take_due(Instant::now()) {
+            self.refresh();
+        }
+    }
+
     fn refresh(self: &Rc<Self>) {
         if self.demo {
             self.render();
@@ -504,6 +550,7 @@ impl Ui {
         state.generation += 1;
         let generation = state.generation;
         drop(state);
+        self.refresh_schedule.borrow_mut().restart(Instant::now());
         self.render();
         let sender = self.sender.clone();
         let client = self.client.clone();
@@ -695,6 +742,7 @@ impl Ui {
             TrayEvent::Command(command) => match command {
                 Command::Show => self.window.present(),
                 Command::Refresh => self.refresh(),
+                Command::RefreshIfDue => self.refresh_if_due(),
                 Command::Quit => self.app.quit(),
             },
         }

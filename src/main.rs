@@ -4,6 +4,7 @@ mod desktop;
 mod gnome_setup;
 mod i18n;
 mod model;
+mod refresh;
 mod storage;
 mod tray;
 mod ui;

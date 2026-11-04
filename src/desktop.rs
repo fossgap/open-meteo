@@ -89,7 +89,9 @@ impl Desktop {
                         event(if method == "Show" {
                             TrayEvent::Activate(None)
                         } else {
-                            TrayEvent::Command(Command::Refresh)
+                            // Calendar opens are automatic requests; respect the
+                            // user's interval, including manual-only mode.
+                            TrayEvent::Command(Command::RefreshIfDue)
                         });
                     }
                     "ShowWithToken" => {

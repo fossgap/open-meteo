@@ -1,5 +1,5 @@
 use super::{
-    accessibility::{Accessibility, Role},
+    accessibility::{Accessibility, Node, Role},
     common::*,
 };
 use crate::process::{input, text};
@@ -41,6 +41,10 @@ pub fn run() -> Result<()> {
         coverage.trim().parse::<f64>()? > 0.015,
         "Weather icon did not render"
     );
+    let options = refresh_options(&a11y, "Main menu", "Refresh interval")?;
+    ensure!(options[1].checked()?, "Default interval must be 15 minutes");
+    capture("refresh-interval-light", &win, &h.output)?;
+    options[4].activate()?;
     a11y.click("°F")?;
     a11y.expect("70°")?;
     a11y.click("°C")?;
@@ -69,6 +73,13 @@ pub fn run() -> Result<()> {
     h.setting("SetColorScheme", Some(&(1u32,).to_variant()))?;
     pause(1000);
     capture("desktop-dark", &win, &h.output)?;
+    let options = refresh_options(&a11y, "Main menu", "Refresh interval")?;
+    ensure!(
+        options[4].checked()?,
+        "Manual-only selection must be active"
+    );
+    capture("refresh-interval-dark", &win, &h.output)?;
+    xdo(&["key", "Escape"])?;
     action(&h.bus, true, "clock-setup")?;
     a11y.text("Extension installed. Run clock setup from a GNOME session to enable it.")?;
     capture("clock-setup", &win, &h.output)?;
@@ -126,7 +137,7 @@ pub fn run() -> Result<()> {
         );
     }
     println!(
-        "UI checks passed: theme changes, units, search, narrow layout, tray registration/menu/restore/loss, first run, offline cache, persistence, translations, and quit."
+        "UI checks passed: theme changes, units, refresh intervals, search, narrow layout, tray registration/menu/restore/loss, first run, offline cache, persistence, translations, and quit."
     );
     Ok(())
 }
@@ -307,6 +318,29 @@ fn quit(window: &str, app: &mut Process) -> Result<()> {
     app.success()
 }
 
+fn refresh_options(
+    a11y: &Accessibility,
+    main_menu: &str,
+    refresh_interval: &str,
+) -> Result<Vec<Node>> {
+    a11y.click(main_menu)?;
+    let submenu = wait("refresh interval submenu", || {
+        Ok(a11y
+            .find(refresh_interval)
+            .filter(|node| node.actions() > 0)
+            .or_else(|| a11y.nodes().into_iter().find(|n| n.is_role(Role::MenuItem))))
+    })?;
+    submenu.activate()?;
+    wait("refresh interval options", || {
+        let options: Vec<_> = a11y
+            .nodes()
+            .into_iter()
+            .filter(|n| n.is_role(Role::RadioMenuItem))
+            .collect();
+        Ok((options.len() == 5).then_some(options))
+    })
+}
+
 fn offline_and_languages(h: &Harness, a11y: &Accessibility) -> Result<()> {
     let location = json!({"name":"Paris", "latitude":48.85341, "longitude":2.3488, "country":"France", "admin1":"Île-de-France"});
     let config = h.private.path().join("config/open-meteo");
@@ -335,7 +369,40 @@ fn offline_and_languages(h: &Harness, a11y: &Accessibility) -> Result<()> {
     until("saved Fahrenheit preference", || {
         Ok(read_json(&settings)?["units"] == "fahrenheit")
     })?;
+    // The harness refuses network access, so each attempted forecast is logged.
+    let forecast_requests = || -> Result<usize> {
+        Ok(fs::read_to_string(h.output.join("ui-smoke.log"))?
+            .matches("https://api.open-meteo.com/v1/forecast?")
+            .count())
+    };
+    let requests_before = forecast_requests()?;
+    for (index, minutes) in [5, 15, 30, 60, 0].into_iter().enumerate() {
+        let options = refresh_options(a11y, "Main menu", "Refresh interval")?;
+        options[index].activate()?;
+        until("saved refresh interval", || {
+            Ok(read_json(&settings)?["refresh_interval_minutes"] == minutes)
+        })?;
+        call(
+            &h.bus,
+            APP,
+            "/io/github/open_meteo/OpenMeteo/Weather",
+            "io.github.open_meteo.OpenMeteo.Weather1",
+            "Refresh",
+            None,
+        )?;
+        pause(500);
+        ensure!(
+            forecast_requests()? == requests_before,
+            "GNOME calendar bypassed the selected refresh interval"
+        );
+    }
     xdo(&["windowfocus", &win])?;
+    xdo(&["key", "--window", &win, "ctrl+r"])?;
+    until(
+        "manual refresh works with automatic updates disabled",
+        || Ok(forecast_requests()? > requests_before),
+    )?;
+    a11y.text("Showing saved weather")?;
     xdo(&["key", "--window", &win, "ctrl+l"])?;
     xdo(&["type", "--window", &win, "London"])?;
     a11y.expect("Couldn’t connect. Check your internet connection and try again.")?;
@@ -348,7 +415,13 @@ fn offline_and_languages(h: &Harness, a11y: &Accessibility) -> Result<()> {
     let menu = wait("language submenu", || {
         Ok(a11y
             .find("Language (restart required)")
-            .or_else(|| a11y.nodes().into_iter().find(|n| n.is_role(Role::MenuItem))))
+            .filter(|node| node.actions() > 0)
+            .or_else(|| {
+                a11y.nodes()
+                    .into_iter()
+                    .filter(|n| n.is_role(Role::MenuItem))
+                    .nth(1)
+            }))
     })?;
     menu.activate()?;
     let german = wait("German language option", || {
@@ -415,12 +488,38 @@ fn offline_and_languages(h: &Harness, a11y: &Accessibility) -> Result<()> {
             current.x >= 0 && current.x < 420,
             "{language} hourly strip must start at current hour"
         );
+        let options = refresh_options(
+            a11y,
+            messages["Main menu"].as_str().unwrap(),
+            messages["Refresh interval"].as_str().unwrap(),
+        )?;
+        ensure!(options[1].checked()?, "Demo must use the default interval");
+        for option in &options {
+            let rect = option.rect()?;
+            ensure!(
+                rect.x >= 0 && rect.x + rect.width <= 420,
+                "{language} refresh option extends beyond the narrow window"
+            );
+        }
+        capture(&format!("refresh-interval-{language}"), &win, &h.output)?;
+        xdo(&["key", "Escape"])?;
         quit(&win, &mut app)?;
     }
     let mut env = h.env.clone();
     env.insert("LANGUAGE".into(), "fr".into());
     let mut app = h.spawn_with(&[], &env)?;
     a11y.text("Gespeicherte Wetterdaten werden angezeigt.")?;
+    let messages = read_json(h.root.join("resources/locales/de.json"))?;
+    let options = refresh_options(
+        a11y,
+        messages["Main menu"].as_str().unwrap(),
+        messages["Refresh interval"].as_str().unwrap(),
+    )?;
+    ensure!(
+        options[4].checked()?,
+        "Manual-only mode must survive restart"
+    );
+    xdo(&["key", "Escape"])?;
     quit(&window()?, &mut app)?;
     Ok(())
 }

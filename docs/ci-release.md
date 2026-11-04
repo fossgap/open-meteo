@@ -15,7 +15,7 @@ runs. The checks cover:
   checksum entries, wrong versions, extra files, symlinks, and unsafe archive paths.
 - Real GTK controls under Xvfb and a private D-Bus session: theme changes, units,
   search states, narrow layout, daily details, tray menus/hiding/restoration/loss,
-  first launch, offline cache, preferences, and quit.
+  first launch, offline cache, refresh interval selection/persistence, and quit.
 - Weather-symbol retention during temperature updates, GNOME bridge
   attach/detach/crash recovery, all six translations at wide and narrow sizes,
   and language selection/persistence.

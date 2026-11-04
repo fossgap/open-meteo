@@ -98,6 +98,11 @@ impl Node {
         let state: Vec<u32> = first(&self.call(ACCESSIBLE, "GetState", None)?)?;
         Ok(state.first().is_some_and(|bits| bits & (1 << 25) != 0))
     }
+    pub fn checked(&self) -> Result<bool> {
+        // ATSPI_STATE_CHECKED is bit 4 in the two-u32 state bitset.
+        let state: Vec<u32> = first(&self.call(ACCESSIBLE, "GetState", None)?)?;
+        Ok(state.first().is_some_and(|bits| bits & (1 << 4) != 0))
+    }
     pub fn child_diagnostics(&self) -> String {
         format!(
             "{} {} count={:?} children={:?} first={:?}",
