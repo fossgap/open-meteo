@@ -53,6 +53,9 @@ pub fn run() -> Result<()> {
     a11y.text("Maximum wind")?;
     capture("day-details", &win, &h.output)?;
     a11y.click("Today forecast")?;
+    xdo(&["windowfocus", &win])?;
+    // GTK 4.8 leaves widget focus in the closed menu after AT-SPI activation.
+    a11y.expect("°C")?.click_in_window(&win)?;
     xdo(&["key", "--window", &win, "ctrl+l"])?;
     a11y.expect("Find a location")?;
     xdo(&["type", "--window", &win, "Paris"])?;
@@ -356,14 +359,32 @@ fn refresh_options(
             .or_else(|| a11y.nodes().into_iter().find(|n| n.is_role(Role::MenuItem))))
     })?;
     submenu.activate()?;
-    wait("refresh interval options", || {
+    let result = wait("refresh interval options", || {
         let options: Vec<_> = a11y
             .nodes()
             .into_iter()
+            // GTK 4.8 exports hidden submenu pages and does not set SHOWING
+            // on visible menu items. Unopened pages have no allocated bounds.
             .filter(|n| n.is_role(Role::RadioMenuItem))
+            .filter(|n| n.rect().is_ok_and(|r| r.width > 0 && r.height > 0))
             .collect();
         Ok((options.len() == 5).then_some(options))
-    })
+    });
+    if result.is_err() {
+        for node in a11y
+            .nodes()
+            .into_iter()
+            .filter(|n| n.is_role(Role::RadioMenuItem))
+        {
+            eprintln!(
+                "Refresh menu option: {:?}, showing={:?}, rect={:?}",
+                node.name,
+                node.showing(),
+                node.rect()
+            );
+        }
+    }
+    result
 }
 
 fn offline_and_languages(h: &Harness, a11y: &Accessibility) -> Result<()> {
@@ -422,6 +443,7 @@ fn offline_and_languages(h: &Harness, a11y: &Accessibility) -> Result<()> {
         );
     }
     xdo(&["windowfocus", &win])?;
+    a11y.expect("°F")?.click_in_window(&win)?;
     xdo(&["key", "--window", &win, "ctrl+r"])?;
     until(
         "manual refresh works with automatic updates disabled",
@@ -519,15 +541,21 @@ fn offline_and_languages(h: &Harness, a11y: &Accessibility) -> Result<()> {
             messages["Refresh interval"].as_str().unwrap(),
         )?;
         ensure!(options[1].checked()?, "Demo must use the default interval");
-        for option in &options {
-            let rect = option.rect()?;
-            ensure!(
-                rect.x >= 0 && rect.x + rect.width <= 420,
-                "{language} refresh option extends beyond the narrow window"
-            );
-        }
         capture(&format!("refresh-interval-{language}"), &win, &h.output)?;
+        // Popovers may extend past their parent window, and GTK 4.8 does not
+        // support AT-SPI screen coordinates. Check the complete menu's width.
+        let menu = a11y
+            .nodes()
+            .into_iter()
+            .find(|node| node.is_role(Role::Menu))
+            .context("Refresh interval menu")?
+            .rect()?;
+        ensure!(
+            menu.width > 0 && menu.width <= 420,
+            "{language} refresh menu is too wide for a narrow display: {menu:?}"
+        );
         xdo(&["key", "Escape"])?;
+        a11y.expect("°C")?.click_in_window(&win)?;
         quit(&win, &mut app)?;
     }
     let mut env = h.env.clone();
@@ -545,6 +573,8 @@ fn offline_and_languages(h: &Harness, a11y: &Accessibility) -> Result<()> {
         "Manual-only mode must survive restart"
     );
     xdo(&["key", "Escape"])?;
-    quit(&window()?, &mut app)?;
+    let win = window()?;
+    a11y.expect("°F")?.click_in_window(&win)?;
+    quit(&win, &mut app)?;
     Ok(())
 }

@@ -14,6 +14,7 @@ const ACCESSIBLE: &str = "org.a11y.atspi.Accessible";
 // versions (for example, "radio menu item" versus "menu item radio").
 #[derive(Clone, Copy)]
 pub enum Role {
+    Menu = 33,
     MenuItem = 35,
     Button = 43,
     RadioMenuItem = 45,
@@ -80,11 +81,25 @@ impl Node {
         ensure!(worked, "Could not activate {}", self.name);
         Ok(())
     }
+    pub fn click_in_window(&self, window: &str) -> Result<()> {
+        let rect = self.rect_in(1).context("Clickable rectangle")?;
+        let window = geometry(window)?;
+        xdo(&[
+            "mousemove",
+            &(window["X"] + rect.x + rect.width / 2).to_string(),
+            &(window["Y"] + rect.y + rect.height / 2).to_string(),
+        ])?;
+        xdo(&["click", "1"])?;
+        Ok(())
+    }
     pub fn rect(&self) -> Result<Rect> {
+        self.rect_in(0)
+    }
+    fn rect_in(&self, coordinates: u32) -> Result<Rect> {
         let (x, y, width, height): (i32, i32, i32, i32) = first(&self.call(
             "org.a11y.atspi.Component",
             "GetExtents",
-            Some(&(0u32,).to_variant()),
+            Some(&(coordinates,).to_variant()),
         )?)?;
         Ok(Rect {
             x,
