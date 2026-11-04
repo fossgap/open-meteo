@@ -41,8 +41,10 @@ side. GNOME's AppIndicator host and Unity use a native icon and text label in
 one button. Icon-only hosts use a combined horizontal image, whose size is
 limited by the panel's icon setting. Its tooltip includes the location,
 condition, unit, and whether the forecast is saved. If neither a tray nor the
-GNOME clock extension is available, closing quits normally. If the last panel
-connection disappears while the window is hidden, the window reopens.
+GNOME clock extension is available, closing quits normally. Hidden windows stay
+hidden across screen lock and unlock. If the last panel connection disappears,
+the app waits three seconds for it to reconnect before reopening the window;
+this wait starts after unlocking when the screen is locked.
 
 ### GNOME system clock
 

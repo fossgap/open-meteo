@@ -25,7 +25,7 @@ pub enum Command {
 pub enum TrayEvent {
     Ready(Result<ksni::blocking::Handle<WeatherTray>, String>),
     Stopped,
-    Availability(bool),
+    AvailabilityChanged,
     Activate(Option<String>),
     Command(Command),
 }
@@ -156,11 +156,11 @@ impl ksni::Tray for WeatherTray {
     }
     fn watcher_online(&self) {
         self.online.store(true, Ordering::Relaxed);
-        let _ = self.sender.send(TrayEvent::Availability(true));
+        let _ = self.sender.send(TrayEvent::AvailabilityChanged);
     }
     fn watcher_offline(&self, _: ksni::OfflineReason) -> bool {
         self.online.store(false, Ordering::Relaxed);
-        let _ = self.sender.send(TrayEvent::Availability(false));
+        let _ = self.sender.send(TrayEvent::AvailabilityChanged);
         true
     }
     fn menu(&self) -> Vec<MenuItem<Self>> {

@@ -10,6 +10,7 @@ use std::{
 pub fn run() -> Result<()> {
     let bus = session()?;
     let scheme = Rc::new(Cell::new(2u32));
+    let locked = Rc::new(Cell::new(false));
     let items = Rc::new(RefCell::new(Vec::<String>::new()));
     let watcher = Rc::new(RefCell::new(Some(gio::bus_own_name_on_connection(
         &bus,
@@ -32,8 +33,14 @@ pub fn run() -> Result<()> {
       <method name="ReadAll"><arg type="as" direction="in"/><arg type="a{sa{sv}}" direction="out"/></method>
       <method name="SetColorScheme"><arg type="u" direction="in"/></method>
       <method name="RemoveTray"/>
+      <method name="RestoreTray"/>
+      <method name="SetLocked"><arg type="b" direction="in"/></method>
       <property name="version" type="u" access="read"/>
       <signal name="SettingChanged"><arg type="s"/><arg type="s"/><arg type="v"/></signal>
+    </interface>
+    <interface name="org.gnome.ScreenSaver">
+      <method name="GetActive"><arg type="b" direction="out"/></method>
+      <signal name="ActiveChanged"><arg type="b"/></signal>
     </interface></node>"#;
     let info = gio::DBusNodeInfo::for_xml(xml)?;
     let lost_items = items.clone();
@@ -83,7 +90,9 @@ pub fn run() -> Result<()> {
             } else {
                 format!("{item}/StatusNotifierItem")
             };
-            registered.borrow_mut().push(item.clone());
+            if !registered.borrow().contains(&item) {
+                registered.borrow_mut().push(item.clone());
+            }
             invocation.return_value(Some(&().to_variant()));
             connection
                 .emit_signal(
@@ -102,6 +111,20 @@ pub fn run() -> Result<()> {
             _ => unreachable!(),
         })
         .build()?;
+    let lock_state = locked.clone();
+    let _screensaver = bus
+        .register_object("/org/gnome/ScreenSaver", &info.interfaces()[2])
+        .method_call(move |_, _, _, _, _, _, invocation| {
+            invocation.return_value(Some(&(lock_state.get(),).to_variant()));
+        })
+        .build()?;
+    let _screensaver_owner = gio::bus_own_name_on_connection(
+        &bus,
+        "org.gnome.ScreenSaver",
+        gio::BusNameOwnerFlags::NONE,
+        |_, _| {},
+        |_, _| {},
+    );
     let _settings = bus
         .register_object("/org/freedesktop/portal/desktop", &info.interfaces()[1])
         .method_call(
@@ -150,6 +173,31 @@ pub fn run() -> Result<()> {
                     if let Some(owner) = watcher.borrow_mut().take() {
                         gio::bus_unown_name(owner);
                     }
+                    invocation.return_value(Some(&().to_variant()));
+                }
+                "RestoreTray" => {
+                    if watcher.borrow().is_none() {
+                        *watcher.borrow_mut() = Some(gio::bus_own_name_on_connection(
+                            &connection,
+                            WATCHER,
+                            gio::BusNameOwnerFlags::NONE,
+                            |_, _| {},
+                            |_, _| {},
+                        ));
+                    }
+                    invocation.return_value(Some(&().to_variant()));
+                }
+                "SetLocked" => {
+                    locked.set(first(&args).unwrap());
+                    connection
+                        .emit_signal(
+                            None,
+                            "/org/gnome/ScreenSaver",
+                            "org.gnome.ScreenSaver",
+                            "ActiveChanged",
+                            Some(&(locked.get(),).to_variant()),
+                        )
+                        .unwrap();
                     invocation.return_value(Some(&().to_variant()));
                 }
                 _ => unreachable!(),

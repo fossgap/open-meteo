@@ -1,5 +1,6 @@
 use crate::{
     api::WeatherClient,
+    background::{SessionLock, TrayRecovery},
     components::{self, clear, label},
     i18n::{self, tf, tr},
     model::{Forecast, Location, Units},
@@ -68,6 +69,8 @@ struct Ui {
     online: Arc<AtomicBool>,
     demo: bool,
     clock_online: Cell<bool>,
+    session_lock: SessionLock,
+    tray_recovery: RefCell<TrayRecovery>,
     desktop: RefCell<Option<crate::desktop::Desktop>>,
 }
 
@@ -262,6 +265,8 @@ pub fn build(app: &adw::Application, demo: bool) {
         online,
         demo,
         clock_online: Cell::new(false),
+        session_lock: SessionLock::new(),
+        tray_recovery: RefCell::new(TrayRecovery::default()),
         desktop: RefCell::new(None),
     });
 
@@ -279,9 +284,6 @@ pub fn build(app: &adw::Application, demo: bool) {
                 if let Some(ui) = available_ui.upgrade() {
                     ui.clock_online.set(online);
                     ui.sync_tray();
-                    if !online && !ui.online.load(Ordering::Relaxed) && !ui.window.is_visible() {
-                        ui.window.present();
-                    }
                     ui.update_tray();
                     ui.update_tray_status();
                 }
@@ -459,6 +461,7 @@ pub fn build(app: &adw::Application, demo: bool) {
             this.receive_tray(event);
         }
         this.refresh_if_due();
+        this.recover_hidden_window();
         glib::ControlFlow::Continue
     });
     let this = ui.clone();
@@ -710,9 +713,6 @@ impl Ui {
                     Err(error) => {
                         eprintln!("System tray: {error}");
                         self.online.store(false, Ordering::Relaxed);
-                        if !self.clock_online.get() && !self.window.is_visible() {
-                            self.window.present();
-                        }
                     }
                 }
             }
@@ -720,11 +720,7 @@ impl Ui {
                 self.tray_pending.set(false);
                 self.sync_tray();
             }
-            TrayEvent::Availability(online) => {
-                if !online && !self.clock_online.get() && !self.window.is_visible() {
-                    self.window.present();
-                }
-            }
+            TrayEvent::AvailabilityChanged => {}
             TrayEvent::Activate(token) => {
                 if let Some(token) = token {
                     if let Ok(display) = gtk::prelude::WidgetExt::display(&self.window)
@@ -747,6 +743,19 @@ impl Ui {
             },
         }
         self.update_tray_status();
+    }
+
+    fn recover_hidden_window(&self) {
+        let reachable = self.clock_online.get()
+            || ((self.state.borrow().tray.is_some() || self.tray_pending.get())
+                && self.online.load(Ordering::Relaxed));
+        if self.tray_recovery.borrow_mut().should_restore(
+            reachable || self.window.is_visible(),
+            self.session_lock.is_locked(),
+            Instant::now(),
+        ) {
+            self.window.present();
+        }
     }
 
     fn sync_tray(&self) {

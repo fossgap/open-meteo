@@ -306,6 +306,31 @@ fn tray_and_bridge(h: &Harness, a11y: &Accessibility, win: &str) -> Result<()> {
         mapped(win, "IsUnMapped")
     })?;
     h.setting("RemoveTray", None)?;
+    // GNOME can remove extensions before announcing the active lock screen.
+    pause(250);
+    h.setting("SetLocked", Some(&(true,).to_variant()))?;
+    pause(3500);
+    ensure!(
+        mapped(win, "IsUnMapped")?,
+        "Lock must preserve hidden windows"
+    );
+    h.setting("SetLocked", Some(&(false,).to_variant()))?;
+    pause(250);
+    h.setting("RestoreTray", None)?;
+    until("tray reconnects after unlock", || {
+        Ok(h.registered()?.len() == 1)
+    })?;
+    pause(3500);
+    ensure!(
+        mapped(win, "IsUnMapped")?,
+        "Unlock must preserve hidden windows"
+    );
+    activate_fallback()?;
+    a11y.click("Close")?;
+    until("hidden before permanent tray loss", || {
+        mapped(win, "IsUnMapped")
+    })?;
+    h.setting("RemoveTray", None)?;
     until("tray loss restores hidden window", || {
         mapped(win, "IsViewable")
     })?;

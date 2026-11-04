@@ -1,4 +1,5 @@
 mod api;
+mod background;
 mod components;
 mod desktop;
 mod gnome_setup;
